@@ -43,15 +43,20 @@ export default function Historial() {
   const [transportistaFilter, setTransportistaFilter] = useState("");
   const [tipoFilter, setTipoFilter] = useState<string>("");
 
-  const { data: asistencias, isLoading } = trpc.asistencias.list.useQuery({
-    fechaDesde: fechaDesde || undefined,
-    fechaHasta: fechaHasta
-      ? new Date(new Date(fechaHasta).getTime() + 86400000).toISOString().split("T")[0]
-      : undefined,
-    transportistaId: transportistaFilter
-      ? Number(transportistaFilter)
-      : undefined,
-  });
+  const { data: asistencias, isLoading } = trpc.asistencias.list.useQuery(
+    {
+      fechaDesde: fechaDesde || undefined,
+      fechaHasta: fechaHasta
+        ? new Date(new Date(fechaHasta).getTime() + 86400000)
+            .toISOString()
+            .split("T")[0]
+        : undefined,
+      transportistaId: transportistaFilter
+        ? Number(transportistaFilter)
+        : undefined,
+    },
+    { refetchInterval: 3000 }
+  );
 
   const { data: transportistas } = trpc.transportistas.list.useQuery();
   const { data: sheetsStatus } = trpc.sheets.status.useQuery(undefined, {

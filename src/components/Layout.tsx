@@ -55,6 +55,16 @@ export default function Layout() {
               <p className="text-xs text-slate-500">Control de Asistencia</p>
             </div>
           </Link>
+          {/* Live sync indicator */}
+          <div className="mt-3 flex items-center gap-2 px-1">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+            </span>
+            <span className="text-xs text-green-600 font-medium">
+              Sincronizado en vivo
+            </span>
+          </div>
         </div>
 
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">

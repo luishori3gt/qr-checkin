@@ -21,8 +21,13 @@ import {
 } from "lucide-react";
 
 export default function Dashboard() {
-  const { data: stats } = trpc.asistencias.estadisticasHoy.useQuery();
-  const { data: recientes } = trpc.asistencias.recientes.useQuery();
+  const { data: stats } = trpc.asistencias.estadisticasHoy.useQuery(
+    undefined,
+    { refetchInterval: 3000 }
+  );
+  const { data: recientes } = trpc.asistencias.recientes.useQuery(undefined, {
+    refetchInterval: 3000,
+  });
   const { data: personasList } = trpc.personas.list.useQuery();
   const { data: transportistasList } = trpc.transportistas.list.useQuery();
 
