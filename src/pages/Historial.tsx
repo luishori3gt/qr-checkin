@@ -35,7 +35,9 @@ import {
   LogIn,
   LogOut,
   RefreshCw,
+  FileSpreadsheet,
 } from "lucide-react";
+import * as XLSX from "xlsx";
 
 export default function Historial() {
   const [fechaDesde, setFechaDesde] = useState("");
@@ -135,6 +137,102 @@ export default function Historial() {
     toast.success("Archivo CSV descargado");
   };
 
+  // Export to Excel (.xlsx) with formatting
+  const exportExcel = () => {
+    if (!filteredAsistencias || filteredAsistencias.length === 0) {
+      toast.error("No hay datos para exportar");
+      return;
+    }
+
+    // Prepare data
+    const data = filteredAsistencias.map((a) => ({
+      ID: a.id,
+      Persona: a.personaNombre ?? "N/A",
+      Transportista: a.transportistaNombre ?? "N/A",
+      Tipo: a.tipo === "entrada" ? "Entrada" : "Salida",
+      Fecha: new Date(a.fechaHora).toLocaleDateString("es-MX", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }),
+      Hora: new Date(a.fechaHora).toLocaleTimeString("es-MX", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      }),
+      "Fecha Completa": new Date(a.fechaHora).toLocaleString("es-MX"),
+      Notas: a.notas ?? "",
+    }));
+
+    // Create worksheet
+    const ws = XLSX.utils.json_to_sheet(data);
+
+    // Set column widths
+    const colWidths = [
+      { wch: 6 },   // ID
+      { wch: 28 },  // Persona
+      { wch: 24 },  // Transportista
+      { wch: 10 },  // Tipo
+      { wch: 12 },  // Fecha
+      { wch: 10 },  // Hora
+      { wch: 22 },  // Fecha Completa
+      { wch: 30 },  // Notas
+    ];
+    ws["!cols"] = colWidths;
+
+    // Add header styles (bold, background color)
+    const range = XLSX.utils.decode_range(ws["!ref"] ?? "A1");
+    for (let C = range.s.c; C <= range.e.c; ++C) {
+      const cellAddress = XLSX.utils.encode_cell({ r: 0, c: C });
+      if (!ws[cellAddress]) continue;
+      ws[cellAddress].s = {
+        font: { bold: true, color: { rgb: "FFFFFF" } },
+        fill: { fgColor: { rgb: "3B82F6" } },
+        alignment: { horizontal: "center" },
+      };
+    }
+
+    // Create workbook
+    const wb = XLSX.utils.book_new();
+
+    // Add summary sheet
+    const totalEntradas = filteredAsistencias.filter(
+      (a) => a.tipo === "entrada"
+    ).length;
+    const totalSalidas = filteredAsistencias.filter(
+      (a) => a.tipo === "salida"
+    ).length;
+
+    const summaryData = [
+      { "": "Reporte de Asistencias QR Check-In" },
+      { "": "" },
+      { Campo: "Fecha de generaciòn", Valor: new Date().toLocaleString("es-MX") },
+      { Campo: "Total registros", Valor: filteredAsistencias.length },
+      { Campo: "Total entradas", Valor: totalEntradas },
+      { Campo: "Total salidas", Valor: totalSalidas },
+      { Campo: "Rango de fechas", Valor: fechaDesde && fechaHasta ? `${fechaDesde} al ${fechaHasta}` : "Todos" },
+    ];
+    const wsSummary = XLSX.utils.json_to_sheet(summaryData);
+    wsSummary["!cols"] = [{ wch: 24 }, { wch: 40 }];
+
+    // Style summary title
+    if (wsSummary["A1"]) {
+      wsSummary["A1"].s = {
+        font: { bold: true, sz: 14, color: { rgb: "1E40AF" } },
+      };
+    }
+
+    XLSX.utils.book_append_sheet(wb, wsSummary, "Resumen");
+    XLSX.utils.book_append_sheet(wb, ws, "Asistencias");
+
+    // Save file
+    const fechaStr = new Date().toISOString().split("T")[0];
+    XLSX.writeFile(wb, `asistencias_${fechaStr}.xlsx`);
+
+    toast.success("Archivo Excel descargado con formato");
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -163,13 +261,22 @@ export default function Historial() {
             </Button>
           )}
           <Button
+            onClick={exportExcel}
+            variant="outline"
+            className="gap-2 border-green-300 hover:bg-green-50 hover:text-green-700"
+            disabled={!filteredAsistencias || filteredAsistencias.length === 0}
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            Exportar Excel
+          </Button>
+          <Button
             onClick={exportCSV}
             variant="outline"
             className="gap-2"
             disabled={!filteredAsistencias || filteredAsistencias.length === 0}
           >
             <Download className="w-4 h-4" />
-            Exportar CSV
+            CSV
           </Button>
         </div>
       </div>
