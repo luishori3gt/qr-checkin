@@ -1,20 +1,16 @@
-import { useState } from 'react'
-import '../App.css'
+import { useEffect } from "react";
+import { useNavigate } from "react-router";
 
 export default function Home() {
-  const [count, setCount] = useState(0)
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    navigate("/dashboard");
+  }, [navigate]);
 
   return (
-    <>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-    </>
-  )
+    <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <p className="text-slate-400">Redirigiendo...</p>
+    </div>
+  );
 }
