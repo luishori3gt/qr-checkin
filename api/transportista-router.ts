@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createRouter, publicQuery, adminQuery } from "./middleware";
+import { createRouter, publicQuery, authedQuery } from "./middleware";
 import { getDb } from "./queries/connection";
 import { transportistas } from "@db/schema";
 import { eq } from "drizzle-orm";
@@ -21,7 +21,7 @@ export const transportistaRouter = createRouter({
       return results[0] ?? null;
     }),
 
-  create: adminQuery
+  create: authedQuery
     .input(
       z.object({
         nombre: z.string().min(1).max(255),
@@ -39,7 +39,7 @@ export const transportistaRouter = createRouter({
       return { id: Number(result[0].insertId) };
     }),
 
-  update: adminQuery
+  update: authedQuery
     .input(
       z.object({
         id: z.number(),
@@ -58,7 +58,7 @@ export const transportistaRouter = createRouter({
       return { success: true };
     }),
 
-  delete: adminQuery
+  delete: authedQuery
     .input(z.object({ id: z.number() }))
     .mutation(async ({ input }) => {
       const db = getDb();
