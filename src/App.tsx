@@ -7,6 +7,7 @@ import Personas from "./pages/Personas";
 import Transportistas from "./pages/Transportistas";
 import Historial from "./pages/Historial";
 import VerQR from "./pages/VerQR";
+import Equipo from "./pages/Equipo";
 import Layout from "./components/Layout";
 
 export default function App() {
@@ -20,6 +21,7 @@ export default function App() {
         <Route path="/personas" element={<Personas />} />
         <Route path="/transportistas" element={<Transportistas />} />
         <Route path="/historial" element={<Historial />} />
+        <Route path="/equipo" element={<Equipo />} />
         <Route path="/qr/:id" element={<VerQR />} />
       </Route>
       <Route path="*" element={<NotFound />} />

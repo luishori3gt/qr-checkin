@@ -3,6 +3,7 @@ import { transportistaRouter } from "./transportista-router";
 import { personaRouter } from "./persona-router";
 import { asistenciaRouter } from "./asistencia-router";
 import { sheetsRouter } from "./sheets-router";
+import { usuarioRouter } from "./usuario-router";
 import { createRouter, publicQuery } from "./middleware";
 
 export const appRouter = createRouter({
@@ -12,6 +13,7 @@ export const appRouter = createRouter({
   personas: personaRouter,
   asistencias: asistenciaRouter,
   sheets: sheetsRouter,
+  usuarios: usuarioRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -11,6 +11,7 @@ import {
   Menu,
   X,
   UserCheck,
+  Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -21,6 +22,7 @@ const navItems = [
   { path: "/personas", label: "Personas", icon: Users },
   { path: "/transportistas", label: "Transportistas", icon: Truck },
   { path: "/historial", label: "Historial", icon: History },
+  { path: "/equipo", label: "Mi Equipo", icon: Shield },
 ];
 
 export default function Layout() {
