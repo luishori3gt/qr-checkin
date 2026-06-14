@@ -30,11 +30,14 @@ export default function Layout() {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Si no hay usuario, mostrar contenido sin nav
+  // Fallback while auth loads
   if (!user) {
     return (
-      <div className="min-h-screen bg-slate-50">
-        <Outlet />
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center space-y-3">
+          <div className="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto" />
+          <p className="text-slate-500 text-sm">Verificando sesion...</p>
+        </div>
       </div>
     );
   }
@@ -106,7 +109,7 @@ export default function Layout() {
             onClick={logout}
           >
             <LogOut className="w-4 h-4" />
-            Cerrar Sesión
+            Cerrar Sesion
           </Button>
         </div>
       </aside>
@@ -172,7 +175,7 @@ export default function Layout() {
                   }}
                 >
                   <LogOut className="w-4 h-4" />
-                  Cerrar Sesión
+                  Cerrar Sesion
                 </Button>
               </div>
             </nav>
