@@ -14,13 +14,6 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Table,
   TableBody,
   TableCell,
@@ -44,7 +37,7 @@ import { QRCodeSVG } from "qrcode.react";
 
 export default function Personas() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [transportistaFilter, setTransportistaFilter] = useState<string>("");
+  const [transportistaFilter, setTransportistaFilter] = useState<string>("all");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -55,10 +48,11 @@ export default function Personas() {
   const [formNombre, setFormNombre] = useState("");
   const [formTransportistaId, setFormTransportistaId] = useState("");
 
-  const { data: personas, isLoading } = trpc.personas.list.useQuery();
-  const { data: transportistas } = trpc.transportistas.list.useQuery();
-
   const utils = trpc.useUtils();
+
+  const { data: personas, isLoading } = trpc.personas.list.useQuery();
+
+  const { data: transportistas } = trpc.transportistas.list.useQuery();
 
   const createPersona = trpc.personas.create.useMutation({
     onSuccess: () => {
@@ -140,24 +134,25 @@ export default function Personas() {
     setShowQRDialog(true);
   };
 
-  // Filter persons
-  const filteredPersonas = personas?.filter((p) => {
+  // Filter persons safely
+  const filteredPersonas = (personas || []).filter((p: any) => {
     const matchesSearch =
       !searchQuery ||
-      p.nombre.toLowerCase().includes(searchQuery.toLowerCase());
+      p.nombre?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesTransportista =
-      !transportistaFilter ||
+      transportistaFilter === "all" ||
       String(p.transportistaId) === transportistaFilter;
     return matchesSearch && matchesTransportista;
   });
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Personas</h1>
           <p className="text-slate-500 mt-1">
-            Gestiona las personas con còdigos QR
+            Gestiona las personas con codigos QR
           </p>
         </div>
         <Button
@@ -187,27 +182,23 @@ export default function Personas() {
             </div>
             <div className="flex items-center gap-2">
               <Filter className="w-4 h-4 text-slate-400" />
-              <Select
+              <select
                 value={transportistaFilter}
-                onValueChange={setTransportistaFilter}
+                onChange={(e) => setTransportistaFilter(e.target.value)}
+                className="h-10 px-3 rounded-md border border-input bg-background text-sm"
               >
-                <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder="Todas las lìneas" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">Todas las lìneas</SelectItem>
-                  {transportistas?.map((t) => (
-                    <SelectItem key={t.id} value={String(t.id)}>
-                      {t.nombre}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {transportistaFilter && (
+                <option value="all">Todas las lineas</option>
+                {(transportistas || []).map((t: any) => (
+                  <option key={t.id} value={String(t.id)}>
+                    {t.nombre}
+                  </option>
+                ))}
+              </select>
+              {transportistaFilter !== "all" && (
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setTransportistaFilter("")}
+                  onClick={() => setTransportistaFilter("all")}
                 >
                   <X className="w-4 h-4" />
                 </Button>
@@ -224,7 +215,7 @@ export default function Personas() {
             <div className="text-center py-12 text-slate-400">
               Cargando personas...
             </div>
-          ) : filteredPersonas && filteredPersonas.length > 0 ? (
+          ) : filteredPersonas.length > 0 ? (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -232,12 +223,11 @@ export default function Personas() {
                     <TableHead>Nombre</TableHead>
                     <TableHead>Transportista</TableHead>
                     <TableHead>Estado</TableHead>
-                    <TableHead>Còdigo QR</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredPersonas.map((persona) => (
+                  {filteredPersonas.map((persona: any) => (
                     <TableRow key={persona.id}>
                       <TableCell className="font-medium">
                         {persona.nombre}
@@ -248,11 +238,11 @@ export default function Personas() {
                             className="w-3 h-3 rounded-full"
                             style={{
                               backgroundColor:
-                                persona.transportistaColor ?? "#3B82F6",
+                                persona.transportistaColor || "#3B82F6",
                             }}
                           />
                           <span className="text-sm">
-                            {persona.transportistaNombre}
+                            {persona.transportistaNombre || "Sin linea"}
                           </span>
                         </div>
                       </TableCell>
@@ -268,17 +258,13 @@ export default function Personas() {
                           {persona.activo === "si" ? "Activo" : "Inactivo"}
                         </Badge>
                       </TableCell>
-                      <TableCell>
-                        <code className="text-xs bg-slate-100 px-2 py-1 rounded">
-                          {persona.qrCode.substring(0, 16)}...
-                        </code>
-                      </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => openQRDialog(persona)}
+                            title="Ver QR"
                           >
                             <QrCode className="w-4 h-4 text-blue-600" />
                           </Button>
@@ -286,6 +272,7 @@ export default function Personas() {
                             variant="ghost"
                             size="sm"
                             onClick={() => openEditDialog(persona)}
+                            title="Editar"
                           >
                             <Pencil className="w-4 h-4 text-slate-600" />
                           </Button>
@@ -293,6 +280,7 @@ export default function Personas() {
                             variant="ghost"
                             size="sm"
                             onClick={() => openDeleteDialog(persona)}
+                            title="Eliminar"
                           >
                             <Trash2 className="w-4 h-4 text-red-600" />
                           </Button>
@@ -306,17 +294,10 @@ export default function Personas() {
           ) : (
             <div className="text-center py-12 text-slate-400">
               <Users className="w-10 h-10 mx-auto mb-2 opacity-50" />
-              <p>No se encontraron personas</p>
-              <Button
-                variant="outline"
-                className="mt-4"
-                onClick={() => {
-                  setSearchQuery("");
-                  setTransportistaFilter("");
-                }}
-              >
-                Limpiar filtros
-              </Button>
+              <p>No hay personas registradas</p>
+              <p className="text-sm mt-1">
+                Crea una persona para generar su codigo QR
+              </p>
             </div>
           )}
         </CardContent>
@@ -328,8 +309,8 @@ export default function Personas() {
           <DialogHeader>
             <DialogTitle>Nueva Persona</DialogTitle>
             <DialogDescription>
-              Crea una nueva persona y se generarà automàticamente su còdigo QR
-              ùnico.
+              Crea una nueva persona y se generara automaticamente su codigo QR
+              unico.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -338,30 +319,27 @@ export default function Personas() {
                 Nombre completo
               </label>
               <Input
-                placeholder="Ej. Juan Pèrez Garcìa"
+                placeholder="Ej. Juan Perez Garcia"
                 value={formNombre}
                 onChange={(e) => setFormNombre(e.target.value)}
               />
             </div>
             <div>
               <label className="text-sm font-medium text-slate-700 mb-1 block">
-                Transportista / Lìnea
+                Transportista / Linea
               </label>
-              <Select
+              <select
                 value={formTransportistaId}
-                onValueChange={setFormTransportistaId}
+                onChange={(e) => setFormTransportistaId(e.target.value)}
+                className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona una lìnea" />
-                </SelectTrigger>
-                <SelectContent>
-                  {transportistas?.map((t) => (
-                    <SelectItem key={t.id} value={String(t.id)}>
-                      {t.nombre}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <option value="">Selecciona una linea</option>
+                {(transportistas || []).map((t: any) => (
+                  <option key={t.id} value={String(t.id)}>
+                    {t.nombre}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
           <DialogFooter>
@@ -400,23 +378,20 @@ export default function Personas() {
             </div>
             <div>
               <label className="text-sm font-medium text-slate-700 mb-1 block">
-                Transportista / Lìnea
+                Transportista / Linea
               </label>
-              <Select
+              <select
                 value={formTransportistaId}
-                onValueChange={setFormTransportistaId}
+                onChange={(e) => setFormTransportistaId(e.target.value)}
+                className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona una lìnea" />
-                </SelectTrigger>
-                <SelectContent>
-                  {transportistas?.map((t) => (
-                    <SelectItem key={t.id} value={String(t.id)}>
-                      {t.nombre}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <option value="">Selecciona una linea</option>
+                {(transportistas || []).map((t: any) => (
+                  <option key={t.id} value={String(t.id)}>
+                    {t.nombre}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
           <DialogFooter>
@@ -445,8 +420,8 @@ export default function Personas() {
               Eliminar Persona
             </DialogTitle>
             <DialogDescription>
-              ¿Estàs seguro de eliminar a{' '}
-              <strong>{selectedPersona?.nombre}</strong>? Esta acciòn no se
+              Estas seguro de eliminar a{" "}
+              <strong>{selectedPersona?.nombre}</strong>? Esta accion no se
               puede deshacer.
             </DialogDescription>
           </DialogHeader>
@@ -474,7 +449,7 @@ export default function Personas() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <QrCode className="w-5 h-5" />
-              Còdigo QR
+              Codigo QR
             </DialogTitle>
           </DialogHeader>
           {selectedPersona && (
@@ -491,16 +466,13 @@ export default function Personas() {
                 {selectedPersona.nombre}
               </h3>
               <p className="text-sm text-slate-500">
-                {selectedPersona.transportistaNombre}
+                {selectedPersona.transportistaNombre || "Sin linea"}
               </p>
-              <code className="text-xs bg-slate-100 px-2 py-1 rounded mt-2 text-slate-500">
-                {selectedPersona.qrCode.substring(0, 24)}...
-              </code>
               <div className="flex gap-2 mt-6">
                 <Link to={`/qr/${selectedPersona.qrCode}`} target="_blank">
                   <Button variant="outline" size="sm" className="gap-2">
                     <Eye className="w-4 h-4" />
-                    Ver Pàgina
+                    Ver Pagina
                   </Button>
                 </Link>
               </div>
