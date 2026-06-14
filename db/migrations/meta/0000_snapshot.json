@@ -1,0 +1,373 @@
+{
+  "id": "00000000-0000-0000-0000-000000000000",
+  "prevId": "",
+  "version": "5",
+  "dialect": "mysql",
+  "tables": {
+    "asistencias": {
+      "name": "asistencias",
+      "columns": {
+        "id": {
+          "autoincrement": true,
+          "name": "id",
+          "type": "bigint unsigned",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "personaId": {
+          "autoincrement": false,
+          "name": "personaId",
+          "type": "bigint unsigned",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "transportistaId": {
+          "autoincrement": false,
+          "name": "transportistaId",
+          "type": "bigint unsigned",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tipo": {
+          "default": "'entrada'",
+          "autoincrement": false,
+          "name": "tipo",
+          "type": "enum('entrada','salida')",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fechaHora": {
+          "default": "'CURRENT_TIMESTAMP'",
+          "autoincrement": false,
+          "name": "fechaHora",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "notas": {
+          "autoincrement": false,
+          "name": "notas",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "registradoPor": {
+          "autoincrement": false,
+          "name": "registradoPor",
+          "type": "bigint unsigned",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "default": "'CURRENT_TIMESTAMP'",
+          "autoincrement": false,
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "compositePrimaryKeys": {},
+      "indexes": {},
+      "foreignKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "local_users": {
+      "name": "local_users",
+      "columns": {
+        "id": {
+          "autoincrement": true,
+          "name": "id",
+          "type": "bigint unsigned",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "username": {
+          "autoincrement": false,
+          "name": "username",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "passwordHash": {
+          "autoincrement": false,
+          "name": "passwordHash",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nombre": {
+          "autoincrement": false,
+          "name": "nombre",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "autoincrement": false,
+          "name": "email",
+          "type": "varchar(320)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "role": {
+          "default": "'user'",
+          "autoincrement": false,
+          "name": "role",
+          "type": "enum('user','admin')",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "activo": {
+          "default": "'si'",
+          "autoincrement": false,
+          "name": "activo",
+          "type": "enum('si','no')",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "createdAt": {
+          "default": "'CURRENT_TIMESTAMP'",
+          "autoincrement": false,
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lastSignInAt": {
+          "default": "'CURRENT_TIMESTAMP'",
+          "autoincrement": false,
+          "name": "lastSignInAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "compositePrimaryKeys": {},
+      "indexes": {
+        "local_users_username_unique": {
+          "name": "local_users_username_unique",
+          "columns": [
+            "username"
+          ],
+          "isUnique": false
+        },
+        "id": {
+          "name": "id",
+          "columns": [
+            "id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "personas": {
+      "name": "personas",
+      "columns": {
+        "id": {
+          "autoincrement": true,
+          "name": "id",
+          "type": "bigint unsigned",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nombre": {
+          "autoincrement": false,
+          "name": "nombre",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "transportistaId": {
+          "autoincrement": false,
+          "name": "transportistaId",
+          "type": "bigint unsigned",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "qrCode": {
+          "autoincrement": false,
+          "name": "qrCode",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "activo": {
+          "default": "'si'",
+          "autoincrement": false,
+          "name": "activo",
+          "type": "enum('si','no')",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "createdAt": {
+          "default": "'CURRENT_TIMESTAMP'",
+          "autoincrement": false,
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updatedAt": {
+          "default": "'CURRENT_TIMESTAMP'",
+          "autoincrement": false,
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "compositePrimaryKeys": {},
+      "indexes": {},
+      "foreignKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "transportistas": {
+      "name": "transportistas",
+      "columns": {
+        "id": {
+          "autoincrement": true,
+          "name": "id",
+          "type": "bigint unsigned",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nombre": {
+          "autoincrement": false,
+          "name": "nombre",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "descripcion": {
+          "autoincrement": false,
+          "name": "descripcion",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "color": {
+          "default": "'#3B82F6'",
+          "autoincrement": false,
+          "name": "color",
+          "type": "varchar(7)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "default": "'CURRENT_TIMESTAMP'",
+          "autoincrement": false,
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updatedAt": {
+          "default": "'CURRENT_TIMESTAMP'",
+          "autoincrement": false,
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "compositePrimaryKeys": {},
+      "indexes": {},
+      "foreignKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "users": {
+      "name": "users",
+      "columns": {
+        "id": {
+          "autoincrement": true,
+          "name": "id",
+          "type": "bigint unsigned",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "unionId": {
+          "autoincrement": false,
+          "name": "unionId",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "autoincrement": false,
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email": {
+          "autoincrement": false,
+          "name": "email",
+          "type": "varchar(320)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "avatar": {
+          "autoincrement": false,
+          "name": "avatar",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "role": {
+          "default": "'user'",
+          "autoincrement": false,
+          "name": "role",
+          "type": "enum('user','admin')",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "createdAt": {
+          "default": "'CURRENT_TIMESTAMP'",
+          "autoincrement": false,
+          "name": "createdAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updatedAt": {
+          "default": "'CURRENT_TIMESTAMP'",
+          "autoincrement": false,
+          "name": "updatedAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lastSignInAt": {
+          "default": "'CURRENT_TIMESTAMP'",
+          "autoincrement": false,
+          "name": "lastSignInAt",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "compositePrimaryKeys": {},
+      "indexes": {},
+      "foreignKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    }
+  },
+  "views": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "tables": {},
+    "indexes": {}
+  }
+}

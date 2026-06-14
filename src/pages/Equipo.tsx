@@ -7,18 +7,22 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
-  Users,
   UserCheck,
   Shield,
   Copy,
   ExternalLink,
+  KeyRound,
+  Globe,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 export default function Equipo() {
-  const { data: usuarios, isLoading } = trpc.usuarios.list.useQuery();
+  const { data: oauthUsers } =
+    trpc.usuarios.list.useQuery(undefined, { retry: false });
+  const { data: localUsersList, isLoading: loadingLocal } =
+    trpc.localAuth.list.useQuery(undefined, { retry: false });
 
   const appUrl = typeof window !== "undefined" ? window.location.origin : "";
 
@@ -27,12 +31,15 @@ export default function Equipo() {
     toast.success("URL copiada al portapapeles");
   };
 
+  const totalUsers =
+    (oauthUsers?.length ?? 0) + (localUsersList?.length ?? 0);
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Mi Equipo</h1>
         <p className="text-slate-500 mt-1">
-          Personas con acceso al sistema
+          {totalUsers} personas con acceso al sistema
         </p>
       </div>
 
@@ -42,7 +49,7 @@ export default function Equipo() {
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-blue-800 mb-1">
-                Comparte esta URL con tu equipo
+                URL para compartir con tu equipo
               </p>
               <code className="text-xs text-blue-600 bg-white px-3 py-2 rounded-lg block truncate">
                 {appUrl}
@@ -77,7 +84,7 @@ export default function Equipo() {
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
             <UserCheck className="w-5 h-5 text-slate-400" />
-            Còmo dar acceso a alguien
+            Como dar acceso a alguien
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -86,53 +93,116 @@ export default function Equipo() {
               <span className="w-6 h-6 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-xs font-bold shrink-0">
                 1
               </span>
-              <span>Copia la URL de arriba y envìasela a la persona</span>
+              <span>Copia la URL de arriba y enviasela a la persona</span>
             </li>
             <li className="flex gap-3">
               <span className="w-6 h-6 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-xs font-bold shrink-0">
                 2
               </span>
-              <span>La persona abre el link y hace clic en "Acceder con Kimi"</span>
+              <span>La persona abre el link y hace clic en "Crear Cuenta"</span>
             </li>
             <li className="flex gap-3">
               <span className="w-6 h-6 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-xs font-bold shrink-0">
                 3
               </span>
-              <span>Inicia sesiòn con su cuenta y listo, ya tiene acceso</span>
-            </li>
-            <li className="flex gap-3">
-              <span className="w-6 h-6 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-xs font-bold shrink-0">
-                4
+              <span>
+                Llena su nombre, usuario y contrasena y listo, ya tiene acceso
               </span>
-              <span>Aparecerà automàticamente en esta lista</span>
             </li>
           </ol>
         </CardContent>
       </Card>
 
-      {/* Users List */}
+      {/* Local Users */}
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <Users className="w-5 h-5 text-slate-400" />
-                Usuarios con Acceso
+                <KeyRound className="w-5 h-5 text-slate-400" />
+                Usuarios con Contrasena
               </CardTitle>
               <CardDescription>
-                {usuarios?.length ?? 0} personas registradas
+                {localUsersList?.length ?? 0} usuarios locales
               </CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
+          {loadingLocal ? (
             <div className="text-center py-8 text-slate-400">
               Cargando usuarios...
             </div>
-          ) : usuarios && usuarios.length > 0 ? (
+          ) : localUsersList && localUsersList.length > 0 ? (
             <div className="space-y-3">
-              {usuarios.map((u) => (
+              {localUsersList.map((u) => (
+                <div
+                  key={u.id}
+                  className="flex items-center gap-4 p-4 bg-slate-50 rounded-lg"
+                >
+                  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                    <KeyRound className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-slate-900 text-sm truncate">
+                      {u.nombre}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      @{u.username}
+                      {u.email && ` · ${u.email}`}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <Badge
+                      variant="outline"
+                      className={
+                        u.activo === "si"
+                          ? "border-green-300 text-green-700 bg-green-50"
+                          : "border-red-300 text-red-700 bg-red-50"
+                      }
+                    >
+                      {u.activo === "si" ? "Activo" : "Inactivo"}
+                    </Badge>
+                    <p className="text-xs text-slate-400 mt-1">
+                      {u.lastSignInAt
+                        ? new Date(u.lastSignInAt).toLocaleDateString("es-MX")
+                        : "Nunca"}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-slate-400">
+              <KeyRound className="w-10 h-10 mx-auto mb-2 opacity-50" />
+              <p>No hay usuarios locales aun</p>
+              <p className="text-xs mt-1">
+                Las personas que se registren apareceran aqui
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* OAuth Users */}
+      {oauthUsers && oauthUsers.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Globe className="w-5 h-5 text-slate-400" />
+                  Usuarios con Kimi
+                </CardTitle>
+                <CardDescription>
+                  {oauthUsers.length} usuarios OAuth
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {oauthUsers.map((u) => (
                 <div
                   key={u.id}
                   className="flex items-center gap-4 p-4 bg-slate-50 rounded-lg"
@@ -166,7 +236,7 @@ export default function Equipo() {
                       }
                     >
                       <Shield className="w-3 h-3" />
-                      {u.role === "admin" ? "Administrador" : "Usuario"}
+                      {u.role === "admin" ? "Admin" : "Usuario"}
                     </Badge>
                     <p className="text-xs text-slate-400 mt-1">
                       {u.lastSignInAt
@@ -177,14 +247,9 @@ export default function Equipo() {
                 </div>
               ))}
             </div>
-          ) : (
-            <div className="text-center py-8 text-slate-400">
-              <Users className="w-10 h-10 mx-auto mb-2 opacity-50" />
-              <p>No hay usuarios registrados</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

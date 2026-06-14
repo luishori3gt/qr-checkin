@@ -73,3 +73,19 @@ export const asistencias = mysqlTable("asistencias", {
 
 export type Asistencia = typeof asistencias.$inferSelect;
 export type InsertAsistencia = typeof asistencias.$inferInsert;
+
+// Tabla de usuarios locales (autenticacion por contraseña)
+export const localUsers = mysqlTable("local_users", {
+  id: serial("id").primaryKey(),
+  username: varchar("username", { length: 100 }).notNull().unique(),
+  passwordHash: varchar("passwordHash", { length: 255 }).notNull(),
+  nombre: varchar("nombre", { length: 255 }).notNull(),
+  email: varchar("email", { length: 320 }),
+  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  activo: mysqlEnum("activo", ["si", "no"]).default("si").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  lastSignInAt: timestamp("lastSignInAt").defaultNow().notNull(),
+});
+
+export type LocalUser = typeof localUsers.$inferSelect;
+export type InsertLocalUser = typeof localUsers.$inferInsert;
