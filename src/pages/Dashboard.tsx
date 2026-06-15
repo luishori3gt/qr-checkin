@@ -13,21 +13,28 @@ import {
   ScanLine,
   Users,
   LogIn,
-  LogOut,
   ArrowRight,
   Clock,
   Truck,
-  TrendingUp,
+  Bus,
 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Dashboard() {
-  const { data: stats } = trpc.asistencias.estadisticasHoy.useQuery(
+  const { isAdmin } = useAuth();
+
+  const { data: statsPersonas } =
+    trpc.asistencias.estadisticasHoy.useQuery(undefined, {
+      refetchInterval: 5000,
+    });
+  const { data: recientesPersonas } = trpc.asistencias.recientes.useQuery(
     undefined,
-    { refetchInterval: 3000 }
+    { refetchInterval: 5000 }
   );
-  const { data: recientes } = trpc.asistencias.recientes.useQuery(undefined, {
-    refetchInterval: 3000,
-  });
+  const { data: statsUnidades } =
+    trpc.transportistas.estadisticasHoy.useQuery(undefined, {
+      refetchInterval: 5000,
+    });
   const { data: personasList } = trpc.personas.list.useQuery();
   const { data: transportistasList } = trpc.transportistas.list.useQuery();
 
@@ -38,7 +45,7 @@ export default function Dashboard() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
           <p className="text-slate-500 mt-1">
-            Resumen de asistencias del dìa
+            Resumen de asistencias del dia en tiempo real
           </p>
         </div>
         <Link to="/escaner">
@@ -50,85 +57,85 @@ export default function Dashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-500">Entradas Hoy</p>
-                <p className="text-3xl font-bold text-slate-900 mt-1">
-                  {stats?.totalEntradas ?? 0}
+                <p className="text-xs text-slate-500">Entradas Personas</p>
+                <p className="text-2xl font-bold text-slate-900 mt-1">
+                  {statsPersonas?.totalEntradas ?? 0}
                 </p>
               </div>
-              <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-                <LogIn className="w-6 h-6 text-green-600" />
+              <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
+                <LogIn className="w-5 h-5 text-green-600" />
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-500">Salidas Hoy</p>
-                <p className="text-3xl font-bold text-slate-900 mt-1">
-                  {stats?.totalSalidas ?? 0}
+                <p className="text-xs text-slate-500">Entradas Unidades</p>
+                <p className="text-2xl font-bold text-slate-900 mt-1">
+                  {statsUnidades?.totalEntradas ?? 0}
                 </p>
               </div>
-              <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
-                <LogOut className="w-6 h-6 text-orange-600" />
+              <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
+                <Bus className="w-5 h-5 text-purple-600" />
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-500">Total Personas</p>
-                <p className="text-3xl font-bold text-slate-900 mt-1">
+                <p className="text-xs text-slate-500">Total Personas</p>
+                <p className="text-2xl font-bold text-slate-900 mt-1">
                   {personasList?.length ?? 0}
                 </p>
               </div>
-              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                <Users className="w-6 h-6 text-blue-600" />
+              <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                <Users className="w-5 h-5 text-blue-600" />
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-500">Transportistas</p>
-                <p className="text-3xl font-bold text-slate-900 mt-1">
+                <p className="text-xs text-slate-500">Lineas</p>
+                <p className="text-2xl font-bold text-slate-900 mt-1">
                   {transportistasList?.length ?? 0}
                 </p>
               </div>
-              <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-                <Truck className="w-6 h-6 text-purple-600" />
+              <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center">
+                <Truck className="w-5 h-5 text-orange-600" />
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Two Column Layout */}
+      {/* Two Column: Personas y Unidades */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Asistencias Recientes */}
-        <Card className="lg:col-span-1">
+        {/* Asistencias de Personas */}
+        <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="flex items-center gap-2">
-                  <Clock className="w-5 h-5 text-slate-400" />
-                  Asistencias Recientes
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Users className="w-5 h-5 text-slate-400" />
+                  Asistencias de Personas
                 </CardTitle>
-                <CardDescription>
-                  Últimos registros de entrada y salida
+                <CardDescription className="text-xs">
+                  Ultimos registros de entrada y salida
                 </CardDescription>
               </div>
               <Link to="/historial">
@@ -140,22 +147,23 @@ export default function Dashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {recientes && recientes.length > 0 ? (
-                recientes.slice(0, 8).map((a) => (
+            <div className="space-y-2">
+              {recientesPersonas && recientesPersonas.length > 0 ? (
+                recientesPersonas.slice(0, 6).map((a) => (
                   <div
                     key={a.id}
                     className="flex items-center justify-between p-3 bg-slate-50 rounded-lg"
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
                       <div
-                        className="w-2 h-10 rounded-full"
+                        className="w-2 h-8 rounded-full shrink-0"
                         style={{
-                          backgroundColor: a.transportistaColor ?? "#3B82F6",
+                          backgroundColor:
+                            a.transportistaColor ?? "#3B82F6",
                         }}
                       />
-                      <div>
-                        <p className="font-medium text-slate-900 text-sm">
+                      <div className="min-w-0">
+                        <p className="font-medium text-slate-900 text-sm truncate">
                           {a.personaNombre}
                         </p>
                         <p className="text-xs text-slate-500">
@@ -163,18 +171,18 @@ export default function Dashboard() {
                         </p>
                       </div>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right shrink-0">
                       <Badge
-                        variant={a.tipo === "entrada" ? "default" : "secondary"}
+                        variant="outline"
                         className={
                           a.tipo === "entrada"
-                            ? "bg-green-100 text-green-700 hover:bg-green-100"
-                            : "bg-orange-100 text-orange-700 hover:bg-orange-100"
+                            ? "border-green-300 text-green-700 bg-green-50 text-xs"
+                            : "border-orange-300 text-orange-700 bg-orange-50 text-xs"
                         }
                       >
                         {a.tipo === "entrada" ? "Entrada" : "Salida"}
                       </Badge>
-                      <p className="text-xs text-slate-500 mt-1">
+                      <p className="text-xs text-slate-400 mt-0.5">
                         {new Date(a.fechaHora).toLocaleTimeString("es-MX", {
                           hour: "2-digit",
                           minute: "2-digit",
@@ -184,76 +192,80 @@ export default function Dashboard() {
                   </div>
                 ))
               ) : (
-                <div className="text-center py-8 text-slate-400">
-                  <Clock className="w-10 h-10 mx-auto mb-2 opacity-50" />
-                  <p>No hay asistencias registradas hoy</p>
+                <div className="text-center py-6 text-slate-400">
+                  <Clock className="w-8 h-8 mx-auto mb-1 opacity-50" />
+                  <p className="text-sm">No hay asistencias de personas hoy</p>
                 </div>
               )}
             </div>
           </CardContent>
         </Card>
 
-        {/* Por Transportista */}
-        <Card className="lg:col-span-1">
+        {/* Asistencias de Unidades */}
+        <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5 text-slate-400" />
-                  Por Transportista
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Bus className="w-5 h-5 text-slate-400" />
+                  Asistencias de Unidades
                 </CardTitle>
-                <CardDescription>
-                  Asistencias del dìa agrupadas por lìnea
+                <CardDescription className="text-xs">
+                  Llegada y salida de transportes
                 </CardDescription>
               </div>
-              <Link to="/transportistas">
-                <Button variant="ghost" size="sm" className="gap-1">
-                  Gestionar
-                  <ArrowRight className="w-4 h-4" />
-                </Button>
-              </Link>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {stats?.porTransportista &&
-              stats.porTransportista.length > 0 ? (
-                stats.porTransportista.map((t) => (
+            <div className="space-y-2">
+              {statsUnidades?.recientes &&
+              statsUnidades.recientes.length > 0 ? (
+                statsUnidades.recientes.map((a) => (
                   <div
-                    key={t.transportistaId}
-                    className="p-4 bg-slate-50 rounded-lg"
+                    key={a.id}
+                    className="flex items-center justify-between p-3 bg-slate-50 rounded-lg"
                   >
-                    <div className="flex items-center gap-2 mb-3">
+                    <div className="flex items-center gap-3 min-w-0">
                       <div
-                        className="w-3 h-3 rounded-full"
+                        className="w-2 h-8 rounded-full shrink-0"
                         style={{
-                          backgroundColor: t.transportistaColor ?? "#3B82F6",
+                          backgroundColor:
+                            a.transportistaColor ?? "#8B5CF6",
                         }}
                       />
-                      <span className="font-medium text-slate-900 text-sm">
-                        {t.transportistaNombre}
-                      </span>
+                      <div className="min-w-0">
+                        <p className="font-medium text-slate-900 text-sm truncate">
+                          {a.transportistaNombre}
+                        </p>
+                        <p className="text-xs text-slate-500">Unidad</p>
+                      </div>
                     </div>
-                    <div className="flex gap-4">
-                      <div className="flex-1 bg-white rounded-lg p-3 text-center">
-                        <p className="text-lg font-bold text-green-600">
-                          {t.entradas}
-                        </p>
-                        <p className="text-xs text-slate-500">Entradas</p>
-                      </div>
-                      <div className="flex-1 bg-white rounded-lg p-3 text-center">
-                        <p className="text-lg font-bold text-orange-600">
-                          {t.salidas}
-                        </p>
-                        <p className="text-xs text-slate-500">Salidas</p>
-                      </div>
+                    <div className="text-right shrink-0">
+                      <Badge
+                        variant="outline"
+                        className={
+                          a.tipo === "entrada"
+                            ? "border-green-300 text-green-700 bg-green-50 text-xs"
+                            : "border-orange-300 text-orange-700 bg-orange-50 text-xs"
+                        }
+                      >
+                        {a.tipo === "entrada" ? "Entrada" : "Salida"}
+                      </Badge>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        {new Date(a.fechaHora).toLocaleTimeString("es-MX", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </p>
                     </div>
                   </div>
                 ))
               ) : (
-                <div className="text-center py-8 text-slate-400">
-                  <Truck className="w-10 h-10 mx-auto mb-2 opacity-50" />
-                  <p>No hay datos por transportista</p>
+                <div className="text-center py-6 text-slate-400">
+                  <Bus className="w-8 h-8 mx-auto mb-1 opacity-50" />
+                  <p className="text-sm">
+                    No hay asistencias de unidades hoy
+                  </p>
                 </div>
               )}
             </div>
@@ -262,54 +274,43 @@ export default function Dashboard() {
       </div>
 
       {/* Quick Actions */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle>Accesos Ràpidos</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Link to="/escaner">
-              <div className="flex items-center gap-4 p-4 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors cursor-pointer">
-                <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center">
-                  <ScanLine className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <p className="font-medium text-slate-900">Escanear QR</p>
-                  <p className="text-sm text-slate-500">
-                    Registrar entrada o salida
-                  </p>
-                </div>
-              </div>
-            </Link>
-            <Link to="/personas">
-              <div className="flex items-center gap-4 p-4 bg-purple-50 hover:bg-purple-100 rounded-xl transition-colors cursor-pointer">
-                <div className="w-12 h-12 bg-purple-600 rounded-xl flex items-center justify-center">
-                  <Users className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <p className="font-medium text-slate-900">Gestionar Personas</p>
-                  <p className="text-sm text-slate-500">
-                    Agregar o editar personas
-                  </p>
-                </div>
-              </div>
-            </Link>
-            <Link to="/historial">
-              <div className="flex items-center gap-4 p-4 bg-green-50 hover:bg-green-100 rounded-xl transition-colors cursor-pointer">
-                <div className="w-12 h-12 bg-green-600 rounded-xl flex items-center justify-center">
-                  <TrendingUp className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <p className="font-medium text-slate-900">Ver Historial</p>
-                  <p className="text-sm text-slate-500">
-                    Reporte completo de asistencias
-                  </p>
-                </div>
-              </div>
-            </Link>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Link to="/escaner">
+          <div className="flex items-center gap-4 p-4 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors cursor-pointer">
+            <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center shrink-0">
+              <ScanLine className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <p className="font-medium text-slate-900">Escanear QR</p>
+              <p className="text-sm text-slate-500">Persona o unidad</p>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        </Link>
+        {isAdmin && (
+          <Link to="/personas">
+            <div className="flex items-center gap-4 p-4 bg-purple-50 hover:bg-purple-100 rounded-xl transition-colors cursor-pointer">
+              <div className="w-12 h-12 bg-purple-600 rounded-xl flex items-center justify-center shrink-0">
+                <Users className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <p className="font-medium text-slate-900">Gestionar Personas</p>
+                <p className="text-sm text-slate-500">Crear y editar</p>
+              </div>
+            </div>
+          </Link>
+        )}
+        <Link to="/transportistas">
+          <div className="flex items-center gap-4 p-4 bg-orange-50 hover:bg-orange-100 rounded-xl transition-colors cursor-pointer">
+            <div className="w-12 h-12 bg-orange-600 rounded-xl flex items-center justify-center shrink-0">
+              <Truck className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <p className="font-medium text-slate-900">Ver Lineas</p>
+              <p className="text-sm text-slate-500">QR de unidades</p>
+            </div>
+          </div>
+        </Link>
+      </div>
     </div>
   );
 }
