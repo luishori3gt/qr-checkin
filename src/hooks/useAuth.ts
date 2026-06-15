@@ -11,36 +11,24 @@ type UnifiedUser = {
 };
 
 export function useAuth() {
-  const utils = trpc.useUtils();
-
-  // Query OAuth user
+  // Query OAuth user - silently fail if no OAuth session
   const {
     data: oauthUser,
     isLoading: oauthLoading,
   } = trpc.auth.me.useQuery(undefined, {
     staleTime: 1000 * 60 * 5,
     retry: false,
+    refetchOnWindowFocus: false,
   });
 
-  // Query local auth user
+  // Query local auth user - silently fail if no local session
   const {
     data: localUser,
     isLoading: localLoading,
   } = trpc.localAuth.me.useQuery(undefined, {
     staleTime: 1000 * 60 * 5,
     retry: false,
-  });
-
-  const logoutMutation = trpc.auth.logout.useMutation({
-    onSuccess: async () => {
-      await utils.invalidate();
-    },
-  });
-
-  const localLogoutMutation = trpc.localAuth.logout.useMutation({
-    onSuccess: async () => {
-      await utils.invalidate();
-    },
+    refetchOnWindowFocus: false,
   });
 
   // Determine which user is active
@@ -69,16 +57,14 @@ export function useAuth() {
   }, [oauthUser, localUser]);
 
   const logout = useCallback(() => {
-    // Logout from both systems to be safe
-    logoutMutation.mutate();
-    localLogoutMutation.mutate();
+    // Clear any local auth cookie manually
+    document.cookie = "local_auth_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT;";
     // Refresh page after logout
-    setTimeout(() => {
-      window.location.reload();
-    }, 300);
-  }, [logoutMutation, localLogoutMutation]);
+    window.location.href = "/login";
+  }, []);
 
-  const isLoading = oauthLoading || localLoading;
+  // Only loading if BOTH are still loading
+  const isLoading = oauthLoading && localLoading;
 
   return useMemo(
     () => ({
