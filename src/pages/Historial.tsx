@@ -11,13 +11,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Table,
   TableBody,
   TableCell,
@@ -34,7 +27,6 @@ import {
   X,
   LogIn,
   LogOut,
-  RefreshCw,
   FileSpreadsheet,
 } from "lucide-react";
 import * as XLSX from "xlsx";
@@ -42,8 +34,8 @@ import * as XLSX from "xlsx";
 export default function Historial() {
   const [fechaDesde, setFechaDesde] = useState("");
   const [fechaHasta, setFechaHasta] = useState("");
-  const [transportistaFilter, setTransportistaFilter] = useState("");
-  const [tipoFilter, setTipoFilter] = useState<string>("");
+  const [transportistaFilter, setTransportistaFilter] = useState("all");
+  const [tipoFilter, setTipoFilter] = useState("all");
 
   const { data: asistencias, isLoading } = trpc.asistencias.list.useQuery(
     {
@@ -53,44 +45,28 @@ export default function Historial() {
             .toISOString()
             .split("T")[0]
         : undefined,
-      transportistaId: transportistaFilter
-        ? Number(transportistaFilter)
-        : undefined,
+      transportistaId:
+        transportistaFilter !== "all" ? Number(transportistaFilter) : undefined,
     },
-    { refetchInterval: 3000 }
+    { refetchInterval: 5000 }
   );
 
   const { data: transportistas } = trpc.transportistas.list.useQuery();
-  const { data: sheetsStatus } = trpc.sheets.status.useQuery(undefined, {
-    retry: false,
-  });
-
-  const syncMutation = trpc.sheets.sync.useMutation({
-    onSuccess: (data) => {
-      if (data.success) {
-        toast.success(data.message);
-      } else {
-        toast.error(data.message);
-      }
-    },
-    onError: (error) => {
-      toast.error(`Error: ${error.message}`);
-    },
-  });
 
   // Filter by type locally
-  const filteredAsistencias = asistencias?.filter((a) => {
-    if (tipoFilter && a.tipo !== tipoFilter) return false;
+  const filteredAsistencias = (asistencias || []).filter((a: any) => {
+    if (tipoFilter !== "all" && a.tipo !== tipoFilter) return false;
     return true;
   });
 
-  const hasFilters = fechaDesde || fechaHasta || transportistaFilter || tipoFilter;
+  const hasFilters =
+    fechaDesde || fechaHasta || transportistaFilter !== "all" || tipoFilter !== "all";
 
   const clearFilters = () => {
     setFechaDesde("");
     setFechaHasta("");
-    setTransportistaFilter("");
-    setTipoFilter("");
+    setTransportistaFilter("all");
+    setTipoFilter("all");
   };
 
   // Export to CSV
@@ -110,7 +86,7 @@ export default function Historial() {
       "Notas",
     ];
 
-    const rows = filteredAsistencias.map((a) => [
+    const rows = filteredAsistencias.map((a: any) => [
       a.id,
       a.personaNombre ?? "N/A",
       a.transportistaNombre ?? "N/A",
@@ -144,8 +120,7 @@ export default function Historial() {
       return;
     }
 
-    // Prepare data
-    const data = filteredAsistencias.map((a) => ({
+    const data = filteredAsistencias.map((a: any) => ({
       ID: a.id,
       Persona: a.personaNombre ?? "N/A",
       Transportista: a.transportistaNombre ?? "N/A",
@@ -165,23 +140,19 @@ export default function Historial() {
       Notas: a.notas ?? "",
     }));
 
-    // Create worksheet
     const ws = XLSX.utils.json_to_sheet(data);
-
-    // Set column widths
     const colWidths = [
-      { wch: 6 },   // ID
-      { wch: 28 },  // Persona
-      { wch: 24 },  // Transportista
-      { wch: 10 },  // Tipo
-      { wch: 12 },  // Fecha
-      { wch: 10 },  // Hora
-      { wch: 22 },  // Fecha Completa
-      { wch: 30 },  // Notas
+      { wch: 6 },
+      { wch: 28 },
+      { wch: 24 },
+      { wch: 10 },
+      { wch: 12 },
+      { wch: 10 },
+      { wch: 22 },
+      { wch: 30 },
     ];
     ws["!cols"] = colWidths;
 
-    // Add header styles (bold, background color)
     const range = XLSX.utils.decode_range(ws["!ref"] ?? "A1");
     for (let C = range.s.c; C <= range.e.c; ++C) {
       const cellAddress = XLSX.utils.encode_cell({ r: 0, c: C });
@@ -193,30 +164,36 @@ export default function Historial() {
       };
     }
 
-    // Create workbook
     const wb = XLSX.utils.book_new();
 
-    // Add summary sheet
     const totalEntradas = filteredAsistencias.filter(
-      (a) => a.tipo === "entrada"
+      (a: any) => a.tipo === "entrada"
     ).length;
     const totalSalidas = filteredAsistencias.filter(
-      (a) => a.tipo === "salida"
+      (a: any) => a.tipo === "salida"
     ).length;
 
     const summaryData = [
       { "": "Reporte de Asistencias QR Check-In" },
       { "": "" },
-      { Campo: "Fecha de generaciòn", Valor: new Date().toLocaleString("es-MX") },
+      {
+        Campo: "Fecha de generacion",
+        Valor: new Date().toLocaleString("es-MX"),
+      },
       { Campo: "Total registros", Valor: filteredAsistencias.length },
       { Campo: "Total entradas", Valor: totalEntradas },
       { Campo: "Total salidas", Valor: totalSalidas },
-      { Campo: "Rango de fechas", Valor: fechaDesde && fechaHasta ? `${fechaDesde} al ${fechaHasta}` : "Todos" },
+      {
+        Campo: "Rango de fechas",
+        Valor:
+          fechaDesde && fechaHasta
+            ? `${fechaDesde} al ${fechaHasta}`
+            : "Todos",
+      },
     ];
     const wsSummary = XLSX.utils.json_to_sheet(summaryData);
     wsSummary["!cols"] = [{ wch: 24 }, { wch: 40 }];
 
-    // Style summary title
     if (wsSummary["A1"]) {
       wsSummary["A1"].s = {
         font: { bold: true, sz: 14, color: { rgb: "1E40AF" } },
@@ -226,7 +203,6 @@ export default function Historial() {
     XLSX.utils.book_append_sheet(wb, wsSummary, "Resumen");
     XLSX.utils.book_append_sheet(wb, ws, "Asistencias");
 
-    // Save file
     const fechaStr = new Date().toISOString().split("T")[0];
     XLSX.writeFile(wb, `asistencias_${fechaStr}.xlsx`);
 
@@ -235,6 +211,7 @@ export default function Historial() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">
@@ -245,21 +222,6 @@ export default function Historial() {
           </p>
         </div>
         <div className="flex gap-2">
-          {sheetsStatus?.configured && (
-            <Button
-              onClick={() => syncMutation.mutate()}
-              variant="outline"
-              className="gap-2"
-              disabled={syncMutation.isPending}
-            >
-              <RefreshCw
-                className={`w-4 h-4 ${syncMutation.isPending ? "animate-spin" : ""}`}
-              />
-              {syncMutation.isPending
-                ? "Sincronizando..."
-                : "Sync Google Sheets"}
-            </Button>
-          )}
           <Button
             onClick={exportExcel}
             variant="outline"
@@ -292,7 +254,6 @@ export default function Historial() {
                 value={fechaDesde}
                 onChange={(e) => setFechaDesde(e.target.value)}
                 className="flex-1"
-                placeholder="Desde"
               />
               <span className="text-slate-400">-</span>
               <Input
@@ -300,37 +261,31 @@ export default function Historial() {
                 value={fechaHasta}
                 onChange={(e) => setFechaHasta(e.target.value)}
                 className="flex-1"
-                placeholder="Hasta"
               />
             </div>
             <div className="flex items-center gap-2">
               <Filter className="w-4 h-4 text-slate-400" />
-              <Select
+              <select
                 value={transportistaFilter}
-                onValueChange={setTransportistaFilter}
+                onChange={(e) => setTransportistaFilter(e.target.value)}
+                className="h-10 px-3 rounded-md border border-input bg-background text-sm"
               >
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Transportista" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">Todos</SelectItem>
-                  {transportistas?.map((t) => (
-                    <SelectItem key={t.id} value={String(t.id)}>
-                      {t.nombre}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={tipoFilter} onValueChange={setTipoFilter}>
-                <SelectTrigger className="w-[140px]">
-                  <SelectValue placeholder="Tipo" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">Todos</SelectItem>
-                  <SelectItem value="entrada">Entradas</SelectItem>
-                  <SelectItem value="salida">Salidas</SelectItem>
-                </SelectContent>
-              </Select>
+                <option value="all">Todas las lineas</option>
+                {(transportistas || []).map((t: any) => (
+                  <option key={t.id} value={String(t.id)}>
+                    {t.nombre}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={tipoFilter}
+                onChange={(e) => setTipoFilter(e.target.value)}
+                className="h-10 px-3 rounded-md border border-input bg-background text-sm"
+              >
+                <option value="all">Todos</option>
+                <option value="entrada">Entradas</option>
+                <option value="salida">Salidas</option>
+              </select>
               {hasFilters && (
                 <Button variant="ghost" size="sm" onClick={clearFilters}>
                   <X className="w-4 h-4" />
@@ -374,7 +329,7 @@ export default function Historial() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredAsistencias.map((a) => (
+                  {filteredAsistencias.map((a: any) => (
                     <TableRow key={a.id}>
                       <TableCell className="font-medium">
                         {a.personaNombre}
