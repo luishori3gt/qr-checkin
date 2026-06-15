@@ -11,60 +11,21 @@ type UnifiedUser = {
 };
 
 export function useAuth() {
-  // Query OAuth user - silently fail if no OAuth session
-  const {
-    data: oauthUser,
-    isLoading: oauthLoading,
-  } = trpc.auth.me.useQuery(undefined, {
+  // Single query to check session (handles both OAuth and local)
+  const { data: sessionUser, isLoading } = trpc.session.me.useQuery(undefined, {
     staleTime: 1000 * 60 * 5,
     retry: false,
     refetchOnWindowFocus: false,
   });
 
-  // Query local auth user - silently fail if no local session
-  const {
-    data: localUser,
-    isLoading: localLoading,
-  } = trpc.localAuth.me.useQuery(undefined, {
-    staleTime: 1000 * 60 * 5,
-    retry: false,
-    refetchOnWindowFocus: false,
-  });
-
-  // Determine which user is active
-  const user: UnifiedUser | null = useMemo(() => {
-    if (oauthUser) {
-      return {
-        id: oauthUser.id,
-        name: oauthUser.name,
-        email: oauthUser.email,
-        avatar: oauthUser.avatar,
-        role: oauthUser.role,
-        authType: "oauth" as const,
-      };
-    }
-    if (localUser) {
-      return {
-        id: localUser.id,
-        name: localUser.name,
-        email: localUser.email,
-        avatar: localUser.avatar,
-        role: localUser.role,
-        authType: "local" as const,
-      };
-    }
-    return null;
-  }, [oauthUser, localUser]);
+  const user: UnifiedUser | null = sessionUser || null;
 
   const logout = useCallback(() => {
-    // Clear any local auth cookie manually
+    // Clear local auth cookie
     document.cookie = "local_auth_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT;";
-    // Refresh page after logout
+    // Redirect to login
     window.location.href = "/login";
   }, []);
-
-  // Only loading if BOTH are still loading
-  const isLoading = oauthLoading && localLoading;
 
   return useMemo(
     () => ({
