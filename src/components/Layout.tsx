@@ -1,5 +1,4 @@
-import { Outlet, useLocation, Link } from "react-router";
-import { useAuth } from "@/hooks/useAuth";
+import { Outlet, useLocation, Link, useNavigate } from "react-router";
 import {
   LayoutDashboard,
   QrCode,
@@ -14,39 +13,51 @@ import {
   Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const navItems = [
   { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { path: "/escaner", label: "Escanear QR", icon: ScanLine },
   { path: "/personas", label: "Personas", icon: Users },
-  { path: "/transportistas", label: "Transportistas", icon: Truck },
+  { path: "/transportistas", label: "Lineas", icon: Truck },
   { path: "/historial", label: "Historial", icon: History },
   { path: "/equipo", label: "Mi Equipo", icon: Shield },
 ];
 
 export default function Layout() {
-  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [userName, setUserName] = useState("Usuario");
 
-  // Fallback while auth loads
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-center space-y-3">
-          <div className="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto" />
-          <p className="text-slate-500 text-sm">Verificando sesion...</p>
-        </div>
-      </div>
-    );
-  }
+  // Try to get user name from API
+  useEffect(() => {
+    fetch("/api/trpc/auth.me")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.result?.data?.name) setUserName(data.result.data.name);
+      })
+      .catch(() => {
+        // Try local auth
+        fetch("/api/trpc/localAuth.me")
+          .then((r) => r.json())
+          .then((data) => {
+            if (data?.result?.data?.nombre)
+              setUserName(data.result.data.nombre);
+          })
+          .catch(() => {});
+      });
+  }, []);
 
-  const isAdmin = user.role === "admin";
+  const logout = () => {
+    document.cookie =
+      "local_auth_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT;";
+    navigate("/login");
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
-      {/* Sidebar - Desktop (md and up) */}
+      {/* Sidebar - Desktop */}
       <aside className="hidden md:flex flex-col w-60 lg:w-64 bg-white border-r border-slate-200 fixed h-full z-10">
         <div className="p-4 lg:p-6 border-b border-slate-100">
           <Link to="/dashboard" className="flex items-center gap-3">
@@ -57,17 +68,18 @@ export default function Layout() {
               <h1 className="font-bold text-lg text-slate-900 leading-tight truncate">
                 QR Check-In
               </h1>
-              <p className="text-xs text-slate-500 truncate">Control de Asistencia</p>
+              <p className="text-xs text-slate-500 truncate">
+                Control de Asistencia
+              </p>
             </div>
           </Link>
-          {/* Live sync indicator */}
           <div className="mt-3 flex items-center gap-2 px-1">
             <span className="relative flex h-2.5 w-2.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
             </span>
             <span className="text-xs text-green-600 font-medium truncate">
-              Sincronizado en vivo
+              En vivo
             </span>
           </div>
         </div>
@@ -96,10 +108,7 @@ export default function Layout() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-slate-900 truncate">
-                {user.name || "Usuario"}
-              </p>
-              <p className="text-xs text-slate-500">
-                {isAdmin ? "Administrador" : "Usuario"}
+                {userName}
               </p>
             </div>
           </div>
@@ -114,7 +123,7 @@ export default function Layout() {
         </div>
       </aside>
 
-      {/* Top Bar - Mobile/Tablet (below md) */}
+      {/* Top Bar - Mobile */}
       <div className="md:hidden fixed top-0 left-0 right-0 bg-white border-b border-slate-200 z-20 px-4 py-3 flex items-center justify-between">
         <Link to="/dashboard" className="flex items-center gap-2 min-w-0">
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shrink-0">
@@ -134,9 +143,12 @@ export default function Layout() {
         </button>
       </div>
 
-      {/* Mobile Menu Overlay */}
+      {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 bg-black/50 z-10" onClick={() => setMobileMenuOpen(false)}>
+        <div
+          className="md:hidden fixed inset-0 bg-black/50 z-10"
+          onClick={() => setMobileMenuOpen(false)}
+        >
           <div
             className="absolute right-0 top-14 w-64 h-[calc(100vh-3.5rem)] bg-white shadow-xl"
             onClick={(e) => e.stopPropagation()}
@@ -158,14 +170,6 @@ export default function Layout() {
                 </Link>
               ))}
               <div className="pt-4 border-t border-slate-100">
-                <div className="px-4 py-2 mb-2">
-                  <p className="text-sm font-medium text-slate-900">
-                    {user.name || "Usuario"}
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    {isAdmin ? "Administrador" : "Usuario"}
-                  </p>
-                </div>
                 <Button
                   variant="ghost"
                   className="w-full flex items-center gap-3 justify-start text-slate-600 hover:text-red-600"
