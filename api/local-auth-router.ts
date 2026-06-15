@@ -188,6 +188,48 @@ export const localAuthRouter = createRouter({
     return { success: true };
   }),
 
+  // Check current session (used by frontend)
+  check: publicQuery.query(async ({ ctx }) => {
+    try {
+      const cookieHeader = ctx.req.headers.get("cookie");
+      if (!cookieHeader) return null;
+
+      const match = cookieHeader.match(/local_auth_token=([^;]+)/);
+      if (!match) return null;
+
+      const payload = (await verify(match[1])) as Record<string, unknown> | null;
+      if (!payload || typeof payload !== "object" || payload.type !== "local") {
+        return null;
+      }
+
+      const db = getDb();
+      const users = await db
+        .select({
+          id: localUsers.id,
+          nombre: localUsers.nombre,
+          email: localUsers.email,
+          role: localUsers.role,
+          activo: localUsers.activo,
+        })
+        .from(localUsers)
+        .where(eq(localUsers.id, Number(payload.userId)));
+
+      if (users.length === 0 || users[0].activo === "no") return null;
+
+      const u = users[0];
+      return {
+        id: u.id,
+        name: u.nombre,
+        email: u.email,
+        avatar: null,
+        role: u.role,
+        authType: "local" as const,
+      };
+    } catch {
+      return null;
+    }
+  }),
+
   // List all local users (for team management)
   list: publicQuery.query(async () => {
     const db = getDb();

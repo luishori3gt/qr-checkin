@@ -12,10 +12,11 @@ type UnifiedUser = {
 
 export function useAuth() {
   // Single query to check session (handles both OAuth and local)
-  const { data: sessionUser, isLoading } = trpc.auth.check.useQuery(undefined, {
+  const { data: sessionUser, isLoading } = trpc.localAuth.check.useQuery(undefined, {
     staleTime: 1000 * 60 * 5,
     retry: false,
     refetchOnWindowFocus: false,
+    // If local auth fails, we stay as unauthenticated
   });
 
   const user: UnifiedUser | null = sessionUser || null;
