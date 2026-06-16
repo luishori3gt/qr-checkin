@@ -1,9 +1,14 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { trpc } from "@/providers/trpc";
 import { toast } from "sonner";
 import {
   QrCode,
@@ -33,6 +38,44 @@ function getOAuthUrl() {
   return url.toString();
 }
 
+// Direct API call for login (no tRPC needed for auth)
+async function apiLogin(username: string, password: string) {
+  const res = await fetch("/api/trpc/localAuth.login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      json: { username, password },
+      meta: { values: {} },
+    }),
+  });
+  const data = await res.json();
+  if (!res.ok || data.error) {
+    throw new Error(data.error?.message || "Error al iniciar sesion");
+  }
+  return data.result.data;
+}
+
+async function apiRegister(
+  username: string,
+  password: string,
+  nombre: string,
+  email?: string
+) {
+  const res = await fetch("/api/trpc/localAuth.register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      json: { username, password, nombre, email },
+      meta: { values: {} },
+    }),
+  });
+  const data = await res.json();
+  if (!res.ok || data.error) {
+    throw new Error(data.error?.message || "Error al crear cuenta");
+  }
+  return data.result.data;
+}
+
 export default function Login() {
   const [tab, setTab] = useState<"login" | "register">("login");
 
@@ -40,6 +83,7 @@ export default function Login() {
   const [loginUser, setLoginUser] = useState("");
   const [loginPass, setLoginPass] = useState("");
   const [showPass, setShowPass] = useState(false);
+  const [loginLoading, setLoginLoading] = useState(false);
 
   // Register form
   const [regUser, setRegUser] = useState("");
@@ -47,37 +91,31 @@ export default function Login() {
   const [regNombre, setRegNombre] = useState("");
   const [regEmail, setRegEmail] = useState("");
   const [showRegPass, setShowRegPass] = useState(false);
+  const [regLoading, setRegLoading] = useState(false);
 
-  const loginMutation = trpc.localAuth.login.useMutation({
-    onSuccess: () => {
-      toast.success("Sesion iniciada correctamente");
-      window.location.href = "/dashboard";
-    },
-    onError: (err) => {
-      toast.error(err.message);
-    },
-  });
-
-  const registerMutation = trpc.localAuth.register.useMutation({
-    onSuccess: () => {
-      toast.success("Cuenta creada e inicio de sesion exitoso");
-      window.location.href = "/dashboard";
-    },
-    onError: (err) => {
-      toast.error(err.message);
-    },
-  });
-
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!loginUser.trim() || !loginPass.trim()) {
       toast.error("Completa todos los campos");
       return;
     }
-    loginMutation.mutate({ username: loginUser.trim(), password: loginPass });
+    setLoginLoading(true);
+    try {
+      const result = await apiLogin(loginUser.trim(), loginPass);
+      if (result.token) {
+        localStorage.setItem("local_auth_token", result.token);
+        toast.success("Sesion iniciada correctamente");
+        // Force full page reload to update ProtectedRoute
+        window.location.href = "/dashboard";
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Error al iniciar sesion");
+    } finally {
+      setLoginLoading(false);
+    }
   };
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!regUser.trim() || !regPass.trim() || !regNombre.trim()) {
       toast.error("Completa todos los campos obligatorios");
@@ -91,12 +129,24 @@ export default function Login() {
       toast.error("La contrasena debe tener al menos 4 caracteres");
       return;
     }
-    registerMutation.mutate({
-      username: regUser.trim(),
-      password: regPass,
-      nombre: regNombre.trim(),
-      email: regEmail.trim() || undefined,
-    });
+    setRegLoading(true);
+    try {
+      const result = await apiRegister(
+        regUser.trim(),
+        regPass,
+        regNombre.trim(),
+        regEmail.trim() || undefined
+      );
+      if (result.token) {
+        localStorage.setItem("local_auth_token", result.token);
+        toast.success("Cuenta creada exitosamente");
+        window.location.href = "/dashboard";
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Error al crear cuenta");
+    } finally {
+      setRegLoading(false);
+    }
   };
 
   return (
@@ -109,8 +159,9 @@ export default function Login() {
           </div>
           <h1 className="text-3xl font-bold mb-4">QR Check-In</h1>
           <p className="text-blue-100 text-lg mb-8">
-            Sistema de control de asistencia digital para tu equipo de transporte. 
-            Registra entradas y salidas escaneando codigos QR en tiempo real.
+            Sistema de control de asistencia digital para tu equipo de
+            transporte. Registra entradas y salidas escaneando codigos QR en
+            tiempo real.
           </p>
           <div className="space-y-4">
             <div className="flex items-center gap-3">
@@ -127,7 +178,7 @@ export default function Login() {
             </div>
             <div className="flex items-center gap-3">
               <Shield className="w-5 h-5 text-blue-200" />
-              <span>Seguridad con contrasena o cuenta Kimi</span>
+              <span>Seguridad con contrasena</span>
             </div>
           </div>
         </div>
@@ -153,7 +204,10 @@ export default function Login() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Tabs value={tab} onValueChange={(v) => setTab(v as "login" | "register")}>
+              <Tabs
+                value={tab}
+                onValueChange={(v) => setTab(v as "login" | "register")}
+              >
                 <TabsList className="grid w-full grid-cols-2 mb-4">
                   <TabsTrigger value="login">
                     <LogIn className="w-3.5 h-3.5 mr-1" />
@@ -165,7 +219,7 @@ export default function Login() {
                   </TabsTrigger>
                 </TabsList>
 
-                {/* Login with password */}
+                {/* Login */}
                 <TabsContent value="login">
                   <form onSubmit={handleLogin} className="space-y-3">
                     <div>
@@ -194,16 +248,20 @@ export default function Login() {
                           onClick={() => setShowPass(!showPass)}
                           className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                         >
-                          {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          {showPass ? (
+                            <EyeOff className="w-4 h-4" />
+                          ) : (
+                            <Eye className="w-4 h-4" />
+                          )}
                         </button>
                       </div>
                     </div>
                     <Button
                       type="submit"
                       className="w-full bg-blue-600 hover:bg-blue-700"
-                      disabled={loginMutation.isPending}
+                      disabled={loginLoading}
                     >
-                      {loginMutation.isPending ? "Entrando..." : "Entrar"}
+                      {loginLoading ? "Entrando..." : "Entrar"}
                     </Button>
                   </form>
 
@@ -267,7 +325,11 @@ export default function Login() {
                           onClick={() => setShowRegPass(!showRegPass)}
                           className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                         >
-                          {showRegPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          {showRegPass ? (
+                            <EyeOff className="w-4 h-4" />
+                          ) : (
+                            <Eye className="w-4 h-4" />
+                          )}
                         </button>
                       </div>
                     </div>
@@ -285,11 +347,11 @@ export default function Login() {
                     <Button
                       type="submit"
                       className="w-full bg-green-600 hover:bg-green-700"
-                      disabled={registerMutation.isPending}
+                      disabled={regLoading}
                     >
-                      {registerMutation.isPending
+                      {regLoading
                         ? "Creando cuenta..."
-                        : "Crear Cuenta"}
+                        : "Crear Cuenta y Entrar"}
                     </Button>
                   </form>
                 </TabsContent>
@@ -300,14 +362,35 @@ export default function Login() {
           {/* Share URL */}
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
             <p className="text-sm font-medium text-blue-800 mb-1">
-              URL del sistema
+              URL para compartir con tu equipo
             </p>
             <code className="text-xs text-blue-600 bg-white px-3 py-2 rounded-lg block break-all">
-              {window.location.origin}
+              {window.location.origin}/login
             </code>
             <p className="text-xs text-blue-500 mt-2">
-              Comparte esta URL con tu equipo para que se registren
+              Copia esta URL y enviala por WhatsApp a tu equipo
             </p>
+          </div>
+
+          {/* Existing users */}
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+            <p className="text-sm font-medium text-slate-700 mb-2">
+              Usuarios del sistema
+            </p>
+            <div className="space-y-1 text-xs text-slate-500">
+              <p>
+                <strong>luis</strong> / VPC2025
+              </p>
+              <p>
+                <strong>patricia</strong> / VPC
+              </p>
+              <p>
+                <strong>seguridad</strong> / VPC1
+              </p>
+              <p>
+                <strong>maria</strong> / Mary
+              </p>
+            </div>
           </div>
         </div>
       </div>

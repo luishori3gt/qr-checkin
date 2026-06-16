@@ -6,15 +6,14 @@ export function useAuth() {
   const isAdmin = false;
 
   const logout = useCallback(() => {
-    document.cookie =
-      "local_auth_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT;";
+    localStorage.removeItem("local_auth_token");
     window.location.href = "/login";
   }, []);
 
   return useMemo(
     () => ({
       user,
-      isAuthenticated: false,
+      isAuthenticated: !!localStorage.getItem("local_auth_token"),
       isLoading,
       isAdmin,
       logout,

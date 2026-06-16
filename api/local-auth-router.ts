@@ -6,24 +6,6 @@ import { localUsers } from "@db/schema";
 import { eq } from "drizzle-orm";
 import { sign, verify } from "./lib/jwt";
 
-const LOCAL_AUTH_COOKIE = "local_auth_token";
-
-// Helper to set cookie
-function setLocalAuthCookie(token: string, headers: Headers) {
-  headers.append(
-    "set-cookie",
-    `${LOCAL_AUTH_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24 * 30}` // 30 days
-  );
-}
-
-// Helper to clear cookie
-function clearLocalAuthCookie(headers: Headers) {
-  headers.append(
-    "set-cookie",
-    `${LOCAL_AUTH_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`
-  );
-}
-
 export const localAuthRouter = createRouter({
   // Register a new local user
   register: publicQuery
@@ -35,10 +17,9 @@ export const localAuthRouter = createRouter({
         email: z.string().email().optional(),
       })
     )
-    .mutation(async ({ input, ctx }) => {
+    .mutation(async ({ input }) => {
       const db = getDb();
 
-      // Check if username already exists
       const existing = await db
         .select()
         .from(localUsers)
@@ -48,10 +29,8 @@ export const localAuthRouter = createRouter({
         throw new Error("Este usuario ya existe");
       }
 
-      // Hash password
       const passwordHash = await bcrypt.hash(input.password, 10);
 
-      // Create user
       const result = await db.insert(localUsers).values({
         username: input.username,
         passwordHash,
@@ -61,23 +40,22 @@ export const localAuthRouter = createRouter({
 
       const userId = Number(result[0].insertId);
 
-      // Generate token
+      // Generate token and return it (frontend stores in localStorage)
       const token = await sign({ userId, type: "local" });
-      setLocalAuthCookie(token, ctx.resHeaders);
 
       return {
         success: true,
+        token,
         user: {
           id: userId,
           username: input.username,
           name: input.nombre,
-          nombre: input.nombre,
           role: "user",
         },
       };
     }),
 
-  // Login with username/password
+  // Login with username/password - returns token in JSON
   login: publicQuery
     .input(
       z.object({
@@ -85,30 +63,27 @@ export const localAuthRouter = createRouter({
         password: z.string().min(1),
       })
     )
-    .mutation(async ({ input, ctx }) => {
+    .mutation(async ({ input }) => {
       const db = getDb();
 
-      // Find user by username
       const users = await db
         .select()
         .from(localUsers)
         .where(eq(localUsers.username, input.username));
 
       if (users.length === 0) {
-        throw new Error("Usuario o contraseña incorrectos");
+        throw new Error("Usuario o contrasena incorrectos");
       }
 
       const user = users[0];
 
-      // Check if user is active
       if (user.activo === "no") {
-        throw new Error("Este usuario està inactivo");
+        throw new Error("Este usuario esta inactivo");
       }
 
-      // Verify password
       const valid = await bcrypt.compare(input.password, user.passwordHash);
       if (!valid) {
-        throw new Error("Usuario o contraseña incorrectos");
+        throw new Error("Usuario o contrasena incorrectos");
       }
 
       // Update last sign in
@@ -117,32 +92,29 @@ export const localAuthRouter = createRouter({
         .set({ lastSignInAt: new Date() })
         .where(eq(localUsers.id, user.id));
 
-      // Generate token
+      // Generate token and return it
       const token = await sign({ userId: user.id, type: "local" });
-      setLocalAuthCookie(token, ctx.resHeaders);
 
       return {
         success: true,
+        token,
         user: {
           id: user.id,
           username: user.username,
           name: user.nombre,
-          nombre: user.nombre,
           role: user.role,
         },
       };
     }),
 
-  // Get current local user from token
+  // Get current user from header token
   me: publicQuery.query(async ({ ctx }) => {
-    const cookieHeader = ctx.req.headers.get("cookie");
-    if (!cookieHeader) return null;
-
-    const match = cookieHeader.match(/local_auth_token=([^;]+)/);
-    if (!match) return null;
+    // Try to get token from x-local-auth-token header
+    const token = ctx.req.headers.get("x-local-auth-token");
+    if (!token) return null;
 
     try {
-      const payload = (await verify(match[1])) as Record<string, unknown> | null;
+      const payload = (await verify(token)) as Record<string, unknown> | null;
       if (!payload || typeof payload !== "object" || payload.type !== "local") {
         return null;
       }
@@ -156,8 +128,6 @@ export const localAuthRouter = createRouter({
           email: localUsers.email,
           role: localUsers.role,
           activo: localUsers.activo,
-          createdAt: localUsers.createdAt,
-          lastSignInAt: localUsers.lastSignInAt,
         })
         .from(localUsers)
         .where(eq(localUsers.id, Number(payload.userId)));
@@ -169,68 +139,17 @@ export const localAuthRouter = createRouter({
         id: u.id,
         username: u.username,
         name: u.nombre,
-        nombre: u.nombre,
         email: u.email,
         role: u.role,
         avatar: null,
-        lastSignInAt: u.lastSignInAt,
-        createdAt: u.createdAt,
-        authType: "local" as const,
+        lastSignInAt: u.nombre,
       };
     } catch {
       return null;
     }
   }),
 
-  // Logout
-  logout: publicQuery.mutation(async ({ ctx }) => {
-    clearLocalAuthCookie(ctx.resHeaders);
-    return { success: true };
-  }),
-
-  // Check current session (used by frontend)
-  check: publicQuery.query(async ({ ctx }) => {
-    try {
-      const cookieHeader = ctx.req.headers.get("cookie");
-      if (!cookieHeader) return null;
-
-      const match = cookieHeader.match(/local_auth_token=([^;]+)/);
-      if (!match) return null;
-
-      const payload = (await verify(match[1])) as Record<string, unknown> | null;
-      if (!payload || typeof payload !== "object" || payload.type !== "local") {
-        return null;
-      }
-
-      const db = getDb();
-      const users = await db
-        .select({
-          id: localUsers.id,
-          nombre: localUsers.nombre,
-          email: localUsers.email,
-          role: localUsers.role,
-          activo: localUsers.activo,
-        })
-        .from(localUsers)
-        .where(eq(localUsers.id, Number(payload.userId)));
-
-      if (users.length === 0 || users[0].activo === "no") return null;
-
-      const u = users[0];
-      return {
-        id: u.id,
-        name: u.nombre,
-        email: u.email,
-        avatar: null,
-        role: u.role,
-        authType: "local" as const,
-      };
-    } catch {
-      return null;
-    }
-  }),
-
-  // List all local users (for team management)
+  // List all local users
   list: publicQuery.query(async () => {
     const db = getDb();
     return db
@@ -247,25 +166,4 @@ export const localAuthRouter = createRouter({
       .from(localUsers)
       .orderBy(localUsers.nombre);
   }),
-
-  // Toggle user active status
-  toggleActive: publicQuery
-    .input(z.object({ id: z.number() }))
-    .mutation(async ({ input }) => {
-      const db = getDb();
-      const users = await db
-        .select({ activo: localUsers.activo })
-        .from(localUsers)
-        .where(eq(localUsers.id, input.id));
-
-      if (users.length === 0) throw new Error("Usuario no encontrado");
-
-      const newStatus = users[0].activo === "si" ? "no" : "si";
-      await db
-        .update(localUsers)
-        .set({ activo: newStatus })
-        .where(eq(localUsers.id, input.id));
-
-      return { success: true, activo: newStatus };
-    }),
 });

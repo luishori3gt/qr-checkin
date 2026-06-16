@@ -1,4 +1,4 @@
-import { Outlet, useLocation, Link, useNavigate } from "react-router";
+import { Outlet, useLocation, Link } from "react-router";
 import {
   LayoutDashboard,
   QrCode,
@@ -9,11 +9,10 @@ import {
   ScanLine,
   Menu,
   X,
-  UserCheck,
   Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 const navItems = [
   { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -25,34 +24,12 @@ const navItems = [
 ];
 
 export default function Layout() {
-  const navigate = useNavigate();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [userName, setUserName] = useState("Usuario");
-
-  // Try to get user name from API
-  useEffect(() => {
-    fetch("/api/trpc/auth.me")
-      .then((r) => r.json())
-      .then((data) => {
-        if (data?.result?.data?.name) setUserName(data.result.data.name);
-      })
-      .catch(() => {
-        // Try local auth
-        fetch("/api/trpc/localAuth.me")
-          .then((r) => r.json())
-          .then((data) => {
-            if (data?.result?.data?.nombre)
-              setUserName(data.result.data.nombre);
-          })
-          .catch(() => {});
-      });
-  }, []);
 
   const logout = () => {
-    document.cookie =
-      "local_auth_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT;";
-    navigate("/login");
+    localStorage.removeItem("local_auth_token");
+    window.location.href = "/login";
   };
 
   return (
@@ -102,16 +79,6 @@ export default function Layout() {
         </nav>
 
         <div className="p-3 lg:p-4 border-t border-slate-100">
-          <div className="flex items-center gap-3 px-3 lg:px-4 py-2 mb-2">
-            <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center shrink-0">
-              <UserCheck className="w-4 h-4 text-slate-600" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-slate-900 truncate">
-                {userName}
-              </p>
-            </div>
-          </div>
           <Button
             variant="ghost"
             className="w-full flex items-center gap-3 justify-start text-slate-600 hover:text-red-600"
@@ -129,7 +96,9 @@ export default function Layout() {
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shrink-0">
             <QrCode className="w-5 h-5 text-white" />
           </div>
-          <span className="font-bold text-slate-900 truncate">QR Check-In</span>
+          <span className="font-bold text-slate-900 truncate">
+            QR Check-In
+          </span>
         </Link>
         <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
