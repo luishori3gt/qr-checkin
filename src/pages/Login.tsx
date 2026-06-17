@@ -38,7 +38,7 @@ function getOAuthUrl() {
   return url.toString();
 }
 
-// Direct API call for login (no tRPC needed for auth)
+// Direct API call for login
 async function apiLogin(username: string, password: string) {
   const res = await fetch("/api/trpc/localAuth.login", {
     method: "POST",
@@ -102,14 +102,17 @@ export default function Login() {
     setLoginLoading(true);
     try {
       const result = await apiLogin(loginUser.trim(), loginPass);
-      if (result.token) {
-        localStorage.setItem("local_auth_token", result.token);
-        toast.success("Sesion iniciada correctamente");
-        // Force full page reload to update ProtectedRoute
-        window.location.href = "/dashboard";
+      if (result.success) {
+        // Backend set HttpOnly cookie + we set a local flag
+        localStorage.setItem("auth_session", "true");
+        toast.success("Sesion iniciada! Entrando...");
+        // Small delay then reload
+        setTimeout(() => {
+          window.location.href = "/dashboard";
+        }, 500);
       }
     } catch (err: any) {
-      toast.error(err.message || "Error al iniciar sesion");
+      toast.error(err.message || "Usuario o contrasena incorrectos");
     } finally {
       setLoginLoading(false);
     }
@@ -137,10 +140,12 @@ export default function Login() {
         regNombre.trim(),
         regEmail.trim() || undefined
       );
-      if (result.token) {
-        localStorage.setItem("local_auth_token", result.token);
-        toast.success("Cuenta creada exitosamente");
-        window.location.href = "/dashboard";
+      if (result.success) {
+        localStorage.setItem("auth_session", "true");
+        toast.success("Cuenta creada! Entrando...");
+        setTimeout(() => {
+          window.location.href = "/dashboard";
+        }, 500);
       }
     } catch (err: any) {
       toast.error(err.message || "Error al crear cuenta");

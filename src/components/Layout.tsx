@@ -28,7 +28,7 @@ export default function Layout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const logout = () => {
-    localStorage.removeItem("local_auth_token");
+    localStorage.removeItem("auth_session");
     window.location.href = "/login";
   };
 
