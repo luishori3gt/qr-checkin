@@ -5,13 +5,12 @@ import {
   Users,
   Truck,
   History,
-  LogOut,
   ScanLine,
   Menu,
   X,
   Shield,
+  Wifi,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { useState } from "react";
 
 const navItems = [
@@ -26,11 +25,6 @@ const navItems = [
 export default function Layout() {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  const logout = () => {
-    localStorage.removeItem("auth_session");
-    window.location.href = "/login";
-  };
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
@@ -51,12 +45,9 @@ export default function Layout() {
             </div>
           </Link>
           <div className="mt-3 flex items-center gap-2 px-1">
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
-            </span>
+            <Wifi className="w-3.5 h-3.5 text-green-500" />
             <span className="text-xs text-green-600 font-medium truncate">
-              En vivo
+              Sincronizado en vivo
             </span>
           </div>
         </div>
@@ -79,14 +70,11 @@ export default function Layout() {
         </nav>
 
         <div className="p-3 lg:p-4 border-t border-slate-100">
-          <Button
-            variant="ghost"
-            className="w-full flex items-center gap-3 justify-start text-slate-600 hover:text-red-600"
-            onClick={logout}
-          >
-            <LogOut className="w-4 h-4" />
-            Cerrar Sesion
-          </Button>
+          <div className="px-3 lg:px-4 py-2">
+            <p className="text-xs text-slate-400">
+              Acceso directo para todo el equipo
+            </p>
+          </div>
         </div>
       </aside>
 
@@ -138,19 +126,6 @@ export default function Layout() {
                   {item.label}
                 </Link>
               ))}
-              <div className="pt-4 border-t border-slate-100">
-                <Button
-                  variant="ghost"
-                  className="w-full flex items-center gap-3 justify-start text-slate-600 hover:text-red-600"
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    logout();
-                  }}
-                >
-                  <LogOut className="w-4 h-4" />
-                  Cerrar Sesion
-                </Button>
-              </div>
             </nav>
           </div>
         </div>

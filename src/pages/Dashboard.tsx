@@ -18,10 +18,9 @@ import {
   Truck,
   Bus,
 } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
 
 export default function Dashboard() {
-  const { isAdmin } = useAuth();
+  const isAdmin = false;
 
   const { data: statsPersonas } =
     trpc.asistencias.estadisticasHoy.useQuery(undefined, {
