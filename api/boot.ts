@@ -9,12 +9,39 @@ import { createOAuthCallbackHandler } from "./kimi/auth";
 import { Paths } from "@contracts/constants";
 import fs from "fs";
 import path from "path";
+import { execSync } from "child_process";
 
 const app = new Hono<{ Bindings: HttpBindings }>();
 const __dirname = import.meta.dirname || path.dirname(new URL(import.meta.url).pathname);
 const distPath = path.resolve(__dirname, "../dist/public");
 
 app.use(bodyLimit({ maxSize: 50 * 1024 * 1024 }));
+
+// Database initialization endpoint (run once to create tables)
+app.get("/api/init-db", async (c) => {
+  try {
+    const projectRoot = path.resolve(__dirname, "..");
+    const output = execSync("npx drizzle-kit push", {
+      cwd: projectRoot,
+      encoding: "utf-8",
+      timeout: 60000,
+      env: { ...process.env, FORCE_COLOR: "0" },
+    });
+    return c.json({ success: true, message: "Database initialized", output });
+  } catch (error: any) {
+    const stderr = error.stderr ? String(error.stderr) : "";
+    const stdout = error.stdout ? String(error.stdout) : "";
+    // If error says tables already exist, that's fine
+    if (stdout.includes("already exists") || stderr.includes("already exists")) {
+      return c.json({ success: true, message: "Tables already exist" });
+    }
+    return c.json(
+      { success: false, error: error.message, stderr, stdout },
+      500,
+    );
+  }
+});
+
 app.get(Paths.oauthCallback, createOAuthCallbackHandler());
 app.use("/api/trpc/*", async (c) => {
   return fetchRequestHandler({
