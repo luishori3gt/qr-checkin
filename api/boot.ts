@@ -7,8 +7,11 @@ import { createContext } from "./context";
 import { env } from "./lib/env";
 import { createOAuthCallbackHandler } from "./kimi/auth";
 import { Paths } from "@contracts/constants";
+import fs from "fs";
+import path from "path";
 
 const app = new Hono<{ Bindings: HttpBindings }>();
+const distPath = path.resolve(import.meta.dirname, "../dist/public");
 
 app.use(bodyLimit({ maxSize: 50 * 1024 * 1024 }));
 app.get(Paths.oauthCallback, createOAuthCallbackHandler());
@@ -22,62 +25,37 @@ app.use("/api/trpc/*", async (c) => {
 });
 app.all("/api/*", (c) => c.json({ error: "Not Found" }, 404));
 
+// SPA: Serve index.html for ALL non-API, non-asset routes
+// This must be before static file serving
+app.get("*", async (c, next) => {
+  const reqPath = c.req.path;
+  
+  // Skip API routes (already handled)
+  if (reqPath.startsWith("/api/")) return next();
+  
+  // Skip actual file requests (assets, etc.)
+  if (reqPath.includes(".")) return next();
+  
+  // Serve index.html for all SPA routes
+  try {
+    const indexPath = path.join(distPath, "index.html");
+    if (fs.existsSync(indexPath)) {
+      let content = fs.readFileSync(indexPath, "utf-8");
+      c.header("Cache-Control", "no-store, no-cache, must-revalidate");
+      return c.html(content);
+    }
+  } catch {
+    // Fall through
+  }
+  return next();
+});
+
 export default app;
 
 if (env.isProduction) {
   const { serve } = await import("@hono/node-server");
-  const fs = await import("fs");
-  const path = await import("path");
-
-  const distPath = path.resolve(import.meta.dirname, "../dist/public");
-
-  // 1. Serve index.html for all HTML routes with NO-CACHE
-  const htmlRoutes = ["/", "/login", "/dashboard", "/escaner", "/personas", "/transportistas", "/historial", "/equipo"];
-  for (const route of htmlRoutes) {
-    app.get(route, (c) => {
-      const content = fs.readFileSync(path.join(distPath, "index.html"), "utf-8");
-      c.header("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
-      c.header("Pragma", "no-cache");
-      c.header("Expires", "0");
-      return c.html(content);
-    });
-  }
-
-  // 2. Serve versioned assets from /app-*/ path
-  app.use("/app-:version/*", async (c) => {
-    const reqPath = c.req.path;
-    // Extract the path after /app-xxx/
-    const assetPath = reqPath.replace(/\/app-[^/]+\//, "");
-    const filePath = path.join(distPath, assetPath);
-
-    if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
-      const ext = path.extname(filePath);
-      const mimeTypes: Record<string, string> = {
-        ".js": "application/javascript",
-        ".css": "text/css",
-        ".svg": "image/svg+xml",
-        ".png": "image/png",
-        ".jpg": "image/jpeg",
-        ".ico": "image/x-icon",
-        ".woff2": "font/woff2",
-      };
-      const contentType = mimeTypes[ext] || "application/octet-stream";
-      const content = fs.readFileSync(filePath);
-      c.header("Content-Type", contentType);
-      c.header("Cache-Control", "no-store, no-cache, must-revalidate");
-      return c.body(content);
-    }
-    return c.notFound();
-  });
-
-  // 3. SPA fallback
-  app.notFound((c) => {
-    const accept = c.req.header("accept") ?? "";
-    if (accept.includes("text/html")) {
-      return c.redirect("/dashboard");
-    }
-    return c.json({ error: "Not Found" }, 404);
-  });
+  const { serveStaticFiles } = await import("./lib/vite");
+  serveStaticFiles(app);
 
   const port = parseInt(process.env.PORT || "3000");
   serve({ fetch: app.fetch, port }, () => {

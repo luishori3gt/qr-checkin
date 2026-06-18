@@ -1,4 +1,4 @@
-import { createRouter, authedQuery } from "./middleware";
+import { createRouter, publicQuery } from "./middleware";
 import { syncAsistenciasToSheet, isSheetsConfigured } from "./google-sheets";
 import { getDb } from "./queries/connection";
 import { asistencias, personas, transportistas } from "@db/schema";
@@ -6,13 +6,13 @@ import { desc } from "drizzle-orm";
 import { eq } from "drizzle-orm";
 
 export const sheetsRouter = createRouter({
-  status: authedQuery.query(() => {
+  status: publicQuery.query(() => {
     return {
       configured: isSheetsConfigured(),
     };
   }),
 
-  sync: authedQuery.mutation(async () => {
+  sync: publicQuery.mutation(async () => {
     const db = getDb();
 
     const allAsistencias = await db

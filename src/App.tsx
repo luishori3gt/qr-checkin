@@ -1,5 +1,4 @@
-import { Routes, Route, Navigate } from "react-router";
-import NotFound from "./pages/NotFound";
+import { Routes, Route } from "react-router";
 import Dashboard from "./pages/Dashboard";
 import Escaner from "./pages/Escaner";
 import Personas from "./pages/Personas";
@@ -7,12 +6,16 @@ import Transportistas from "./pages/Transportistas";
 import Historial from "./pages/Historial";
 import VerQR from "./pages/VerQR";
 import Equipo from "./pages/Equipo";
+import Checador from "./pages/Checador";
 import Layout from "./components/Layout";
 
 export default function App() {
   return (
     <Routes>
-      <Route path="/login" element={<Navigate to="/dashboard" replace />} />
+      {/* Checador - pagina simple solo escaneo */}
+      <Route path="/checador" element={<Checador />} />
+
+      {/* Admin - todo lo demas con layout */}
       <Route element={<Layout />}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/dashboard" element={<Dashboard />} />
@@ -23,7 +26,6 @@ export default function App() {
         <Route path="/equipo" element={<Equipo />} />
         <Route path="/qr/:id" element={<VerQR />} />
       </Route>
-      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 }

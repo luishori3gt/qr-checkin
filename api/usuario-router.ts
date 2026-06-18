@@ -1,12 +1,12 @@
 import { z } from "zod";
-import { createRouter, authedQuery } from "./middleware";
+import { createRouter, publicQuery } from "./middleware";
 import { getDb } from "./queries/connection";
 import { users } from "@db/schema";
 import { eq, desc } from "drizzle-orm";
 
 export const usuarioRouter = createRouter({
   // Listar todos los usuarios que tienen acceso
-  list: authedQuery.query(async () => {
+  list: publicQuery.query(async () => {
     const db = getDb();
     return db
       .select({
@@ -23,7 +23,7 @@ export const usuarioRouter = createRouter({
   }),
 
   // Cambiar rol de un usuario
-  updateRole: authedQuery
+  updateRole: publicQuery
     .input(
       z.object({
         id: z.number(),
