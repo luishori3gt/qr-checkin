@@ -7,7 +7,8 @@ import path from "path";
 type App = Hono<{ Bindings: HttpBindings }>;
 
 export function serveStaticFiles(app: App) {
-  const distPath = path.resolve(import.meta.dirname, "../dist/public");
+  const __dirname = import.meta.dirname || path.dirname(new URL(import.meta.url).pathname);
+  const distPath = path.resolve(__dirname, "../dist/public");
 
   app.use("*", serveStatic({ root: "./dist/public" }));
 
