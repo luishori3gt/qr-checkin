@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router";
+import { Routes, Route, Navigate } from "react-router";
 import NotFound from "./pages/NotFound";
 import Dashboard from "./pages/Dashboard";
 import Escaner from "./pages/Escaner";
@@ -12,6 +12,7 @@ import Layout from "./components/Layout";
 export default function App() {
   return (
     <Routes>
+      <Route path="/login" element={<Navigate to="/dashboard" replace />} />
       <Route element={<Layout />}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/dashboard" element={<Dashboard />} />
