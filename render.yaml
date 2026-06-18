@@ -3,6 +3,8 @@ services:
     name: qr-checkin
     runtime: node
     plan: free
+    region: oregon
+    branch: main
     buildCommand: npm install && npm run build
     startCommand: npm start
     envVars:
@@ -10,3 +12,5 @@ services:
         value: production
       - key: DATABASE_URL
         sync: false
+      - key: PORT
+        value: 3000
