@@ -3,6 +3,7 @@ import { trpc } from "@/providers/trpc";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import {
   ScanLine,
@@ -15,20 +16,40 @@ import {
   LogOut,
   Bus,
   User,
+  MapPin,
+  ArrowLeft,
 } from "lucide-react";
+import { getRutasPorLinea } from "@/data/rutas";
+
+type ScanResult = {
+  ok: boolean;
+  msg: string;
+  name?: string;
+  tipo?: string;
+  time?: string;
+  mode?: string;
+  ruta?: string;
+} | null;
+
+type TransportistaInfo = {
+  id: number;
+  nombre: string;
+  color: string;
+} | null;
 
 export default function Checador() {
   const [scanning, setScanning] = useState(false);
-  const [result, setResult] = useState<{
-    ok: boolean;
-    msg: string;
-    name?: string;
-    tipo?: string;
-    time?: string;
-    mode?: string;
-  } | null>(null);
+  const [result, setResult] = useState<ScanResult>(null);
   const [tipo, setTipo] = useState<"entrada" | "salida">("entrada");
   const [modo, setModo] = useState<"persona" | "unidad">("persona");
+
+  // Modal de rutas
+  const [showRutaModal, setShowRutaModal] = useState(false);
+  const [scannedTransportista, setScannedTransportista] = useState<TransportistaInfo>(null);
+  const [selectedRuta, setSelectedRuta] = useState("");
+  const [customRuta, setCustomRuta] = useState("");
+  const [showCustomInput, setShowCustomInput] = useState(false);
+  const [pendingQrCode, setPendingQrCode] = useState("");
 
   const utils = trpc.useUtils();
 
@@ -63,6 +84,7 @@ export default function Checador() {
         ok: true,
         name: data.transportistaNombre,
         tipo: data.tipo,
+        ruta: data.ruta,
         time: new Date(data.fechaHora).toLocaleTimeString("es-MX", {
           hour: "2-digit",
           minute: "2-digit",
@@ -73,7 +95,7 @@ export default function Checador() {
         msg: "Unidad registrada",
       });
       utils.transportistas.estadisticasHoy.invalidate();
-      toast.success(`${data.transportistaNombre} - ${data.tipo}`);
+      toast.success(`${data.transportistaNombre} - ${data.tipo} - ${data.ruta || "Sin ruta"}`);
     },
     onError: (err) => {
       setResult({ ok: false, msg: err.message });
@@ -95,11 +117,7 @@ export default function Checador() {
           { fps: 10, qrbox: { width: 250, height: 250 } },
           (text: string) => {
             setScanning(false);
-            if (modo === "persona") {
-              registrarPersona.mutate({ qrCode: text, tipo });
-            } else {
-              registrarUnidad.mutate({ qrCode: text, tipo });
-            }
+            handleQrScanned(text);
           },
           () => {}
         );
@@ -115,10 +133,215 @@ export default function Checador() {
     };
   }, [scanning]);
 
+  const handleQrScanned = (qrCode: string) => {
+    if (modo === "persona") {
+      registrarPersona.mutate({ qrCode, tipo });
+    } else {
+      // Para unidades: buscar el transportista y mostrar modal de rutas
+      handleUnidadScanned(qrCode);
+    }
+  };
+
+  const handleUnidadScanned = async (qrCode: string) => {
+    try {
+      // Llamamos directamente al endpoint de tRPC para buscar por QR
+      const response = await fetch(`/api/trpc/transportistas.getByQrCode?input=${encodeURIComponent(JSON.stringify({ qrCode }))}`);
+      const data = await response.json();
+      
+      if (!data.result?.data) {
+        setResult({ ok: false, msg: "QR no valido o transportista no encontrado" });
+        toast.error("QR no valido o transportista no encontrado");
+        return;
+      }
+
+      const transportista = data.result.data;
+      const rutas = getRutasPorLinea(transportista.nombre);
+
+      setScannedTransportista({
+        id: transportista.id,
+        nombre: transportista.nombre,
+        color: transportista.color || "#3B82F6",
+      });
+      setPendingQrCode(qrCode);
+      setSelectedRuta("");
+      setCustomRuta("");
+      setShowCustomInput(false);
+
+      if (rutas.length > 0) {
+        // Mostrar modal con rutas
+        setShowRutaModal(true);
+      } else {
+        // No hay rutas configuradas, mostrar input directo
+        setShowRutaModal(true);
+        setShowCustomInput(true);
+      }
+    } catch {
+      setResult({ ok: false, msg: "Error al buscar transportista" });
+      toast.error("Error al buscar transportista");
+    }
+  };
+
+  const confirmarRegistroUnidad = () => {
+    const ruta = showCustomInput ? customRuta.trim() : selectedRuta;
+    if (!ruta) {
+      toast.error("Selecciona o escribe una ruta/tienda");
+      return;
+    }
+    setShowRutaModal(false);
+    registrarUnidad.mutate({ qrCode: pendingQrCode, tipo, ruta });
+  };
+
+  const cancelarModal = () => {
+    setShowRutaModal(false);
+    setScannedTransportista(null);
+    setSelectedRuta("");
+    setCustomRuta("");
+    setShowCustomInput(false);
+    setPendingQrCode("");
+  };
+
   const scanAgain = () => {
     setResult(null);
     setScanning(true);
   };
+
+  const rutas = scannedTransportista ? getRutasPorLinea(scannedTransportista.nombre) : [];
+
+  // MODAL DE RUTAS
+  if (showRutaModal && scannedTransportista) {
+    return (
+      <div className="min-h-screen bg-slate-50 p-4">
+        <div className="max-w-md mx-auto space-y-4">
+          {/* Header */}
+          <div className="text-center pt-4">
+            <div
+              className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3"
+              style={{ backgroundColor: scannedTransportista.color }}
+            >
+              <Bus className="w-8 h-8 text-white" />
+            </div>
+            <h1 className="text-xl font-bold text-slate-900">
+              {scannedTransportista.nombre}
+            </h1>
+            <p className="text-sm text-slate-500">
+              Selecciona la tienda / ruta
+            </p>
+          </div>
+
+          {/* Tipo de registro actual */}
+          <div className="text-center">
+            <Badge
+              className={
+                tipo === "entrada"
+                  ? "bg-green-100 text-green-700 border-green-300 text-sm px-3 py-1"
+                  : "bg-orange-100 text-orange-700 border-orange-300 text-sm px-3 py-1"
+              }
+            >
+              {tipo === "entrada" ? "ENTRADA" : "SALIDA"}
+            </Badge>
+          </div>
+
+          {/* Lista de rutas */}
+          <Card>
+            <CardContent className="p-3">
+              {rutas.length > 0 && (
+                <div className="grid grid-cols-1 gap-2">
+                  {rutas.map((ruta) => (
+                    <button
+                      key={ruta}
+                      onClick={() => {
+                        setSelectedRuta(ruta);
+                        setShowCustomInput(false);
+                        setCustomRuta("");
+                      }}
+                      className={`flex items-center gap-3 p-4 rounded-xl text-left transition-all ${
+                        selectedRuta === ruta
+                          ? "bg-blue-600 text-white shadow-lg scale-[1.02]"
+                          : "bg-white border-2 border-slate-200 text-slate-700 hover:border-blue-300 hover:bg-blue-50"
+                      }`}
+                    >
+                      <MapPin
+                        className={`w-5 h-5 flex-shrink-0 ${
+                          selectedRuta === ruta ? "text-white" : "text-slate-400"
+                        }`}
+                      />
+                      <span className="font-medium text-base">{ruta}</span>
+                      {selectedRuta === ruta && (
+                        <CheckCircle2 className="w-5 h-5 ml-auto flex-shrink-0" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Boton Otra ruta */}
+              {!showCustomInput && (
+                <button
+                  onClick={() => {
+                    setShowCustomInput(true);
+                    setSelectedRuta("");
+                  }}
+                  className={`w-full flex items-center gap-3 p-4 rounded-xl text-left transition-all mt-2 ${
+                    showCustomInput
+                      ? "bg-blue-600 text-white shadow-lg"
+                      : "bg-white border-2 border-dashed border-slate-300 text-slate-500 hover:border-slate-400 hover:bg-slate-50"
+                  }`}
+                >
+                  <MapPin className="w-5 h-5 flex-shrink-0" />
+                  <span className="font-medium text-base">Otra ruta / tienda</span>
+                </button>
+              )}
+
+              {/* Input para ruta manual */}
+              {showCustomInput && (
+                <div className="mt-3 space-y-2">
+                  <Input
+                    placeholder="Escribe la tienda o ruta..."
+                    value={customRuta}
+                    onChange={(e) => setCustomRuta(e.target.value)}
+                    className="text-base py-5"
+                    autoFocus
+                  />
+                  {rutas.length > 0 && (
+                    <button
+                      onClick={() => {
+                        setShowCustomInput(false);
+                        setCustomRuta("");
+                      }}
+                      className="text-sm text-blue-600 hover:underline flex items-center gap-1"
+                    >
+                      <ArrowLeft className="w-3 h-3" />
+                      Volver a la lista
+                    </button>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Botones de accion */}
+          <div className="space-y-2">
+            <Button
+              onClick={confirmarRegistroUnidad}
+              className="w-full py-6 text-lg font-semibold gap-2"
+              style={{ backgroundColor: scannedTransportista.color }}
+              disabled={!selectedRuta && !customRuta.trim()}
+            >
+              <CheckCircle2 className="w-5 h-5" />
+              Confirmar {tipo === "entrada" ? "Entrada" : "Salida"}
+            </Button>
+            <Button
+              onClick={cancelarModal}
+              variant="outline"
+              className="w-full py-5 text-base"
+            >
+              Cancelar
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 p-4">
@@ -244,7 +467,11 @@ export default function Checador() {
                     <li>Elige Entrada o Salida</li>
                     <li>Presiona "Escanear QR"</li>
                     <li>Apunta la camara al codigo</li>
-                    <li>El registro se hace automatico</li>
+                    {modo === "unidad" ? (
+                      <li>Selecciona la tienda/ruta en la pantalla</li>
+                    ) : (
+                      <li>El registro se hace automatico</li>
+                    )}
                   </ol>
                 </div>
               </div>
@@ -294,6 +521,12 @@ export default function Checador() {
                     <p className="text-xl font-semibold text-slate-900 mt-2">
                       {result.name}
                     </p>
+                    {result.ruta && (
+                      <p className="text-sm text-slate-500 mt-1 flex items-center gap-1">
+                        <MapPin className="w-3 h-3" />
+                        {result.ruta}
+                      </p>
+                    )}
                     <Badge
                       className={
                         result.tipo === "entrada"

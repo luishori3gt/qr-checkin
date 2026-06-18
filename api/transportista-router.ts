@@ -92,6 +92,7 @@ export const transportistaRouter = createRouter({
       z.object({
         qrCode: z.string(),
         tipo: z.enum(["entrada", "salida"]).default("entrada"),
+        ruta: z.string().default(""),
         notas: z.string().optional(),
         registradoPor: z.number().optional(),
       })
@@ -114,6 +115,7 @@ export const transportistaRouter = createRouter({
       // Registrar asistencia de la unidad
       const result = await db.insert(asistenciasTransportistas).values({
         transportistaId: transportista.id,
+        ruta: input.ruta,
         tipo: input.tipo,
         notas: input.notas,
         registradoPor: input.registradoPor,
@@ -123,6 +125,7 @@ export const transportistaRouter = createRouter({
         id: Number(result[0].insertId),
         transportistaNombre: transportista.nombre,
         transportistaId: transportista.id,
+        ruta: input.ruta,
         tipo: input.tipo,
         fechaHora: new Date(),
       };
@@ -136,6 +139,7 @@ export const transportistaRouter = createRouter({
         .select({
           id: asistenciasTransportistas.id,
           transportistaId: asistenciasTransportistas.transportistaId,
+          ruta: asistenciasTransportistas.ruta,
           tipo: asistenciasTransportistas.tipo,
           fechaHora: asistenciasTransportistas.fechaHora,
           notas: asistenciasTransportistas.notas,
@@ -184,6 +188,7 @@ export const transportistaRouter = createRouter({
       .select({
         id: asistenciasTransportistas.id,
         transportistaId: asistenciasTransportistas.transportistaId,
+        ruta: asistenciasTransportistas.ruta,
         tipo: asistenciasTransportistas.tipo,
         fechaHora: asistenciasTransportistas.fechaHora,
         transportistaNombre: transportistas.nombre,

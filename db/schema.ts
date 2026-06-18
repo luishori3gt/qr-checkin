@@ -79,6 +79,7 @@ export type InsertAsistencia = typeof asistencias.$inferInsert;
 export const asistenciasTransportistas = mysqlTable("asistencias_transportistas", {
   id: serial("id").primaryKey(),
   transportistaId: bigint("transportistaId", { mode: "number", unsigned: true }).notNull(),
+  ruta: varchar("ruta", { length: 255 }).default("").notNull(),
   tipo: mysqlEnum("tipo", ["entrada", "salida"]).default("entrada").notNull(),
   fechaHora: timestamp("fechaHora").defaultNow().notNull(),
   notas: text("notas"),

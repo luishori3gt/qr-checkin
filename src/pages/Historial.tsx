@@ -28,6 +28,8 @@ import {
   LogIn,
   LogOut,
   FileSpreadsheet,
+  Bus,
+  MapPin,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 
@@ -36,6 +38,7 @@ export default function Historial() {
   const [fechaHasta, setFechaHasta] = useState("");
   const [transportistaFilter, setTransportistaFilter] = useState("all");
   const [tipoFilter, setTipoFilter] = useState("all");
+  const [tabActivo, setTabActivo] = useState<"personas" | "unidades">("personas");
 
   const { data: asistencias, isLoading } = trpc.asistencias.list.useQuery(
     {
@@ -51,11 +54,23 @@ export default function Historial() {
     { refetchInterval: 5000 }
   );
 
+  const { data: asistenciasUnidades, isLoading: isLoadingUnidades } =
+    trpc.transportistas.listAsistencias.useQuery(undefined, {
+      refetchInterval: 5000,
+    });
+
   const { data: transportistas } = trpc.transportistas.list.useQuery();
 
   // Filter by type locally
   const filteredAsistencias = (asistencias || []).filter((a: any) => {
     if (tipoFilter !== "all" && a.tipo !== tipoFilter) return false;
+    return true;
+  });
+
+  // Filter unidades by type
+  const filteredUnidades = (asistenciasUnidades || []).filter((a: any) => {
+    if (tipoFilter !== "all" && a.tipo !== tipoFilter) return false;
+    if (transportistaFilter !== "all" && a.transportistaId !== Number(transportistaFilter)) return false;
     return true;
   });
 
@@ -296,111 +311,254 @@ export default function Historial() {
         </CardContent>
       </Card>
 
-      {/* Results */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <History className="w-5 h-5 text-slate-400" />
-                Registros
-              </CardTitle>
-              <CardDescription>
-                {filteredAsistencias?.length ?? 0} asistencias encontradas
-              </CardDescription>
+      {/* Tabs */}
+      <div className="flex gap-2">
+        <button
+          onClick={() => setTabActivo("personas")}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition ${
+            tabActivo === "personas"
+              ? "bg-blue-600 text-white"
+              : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+          }`}
+        >
+          <User className="w-4 h-4" />
+          Personas ({filteredAsistencias?.length ?? 0})
+        </button>
+        <button
+          onClick={() => setTabActivo("unidades")}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition ${
+            tabActivo === "unidades"
+              ? "bg-purple-600 text-white"
+              : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+          }`}
+        >
+          <Bus className="w-4 h-4" />
+          Unidades ({filteredUnidades?.length ?? 0})
+        </button>
+      </div>
+
+      {/* Results - Personas */}
+      {tabActivo === "personas" && (
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <History className="w-5 h-5 text-slate-400" />
+                  Registros de Personas
+                </CardTitle>
+                <CardDescription>
+                  {filteredAsistencias?.length ?? 0} asistencias encontradas
+                </CardDescription>
+              </div>
             </div>
-          </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="text-center py-12 text-slate-400">
-              Cargando asistencias...
-            </div>
-          ) : filteredAsistencias && filteredAsistencias.length > 0 ? (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Persona</TableHead>
-                    <TableHead>Transportista</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Fecha</TableHead>
-                    <TableHead>Hora</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredAsistencias.map((a: any) => (
-                    <TableRow key={a.id}>
-                      <TableCell className="font-medium">
-                        {a.personaNombre}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div
-                            className="w-2.5 h-2.5 rounded-full"
-                            style={{
-                              backgroundColor:
-                                a.transportistaColor ?? "#3B82F6",
-                            }}
-                          />
-                          <span className="text-sm">
-                            {a.transportistaNombre}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={
-                            a.tipo === "entrada"
-                              ? "border-green-300 text-green-700 bg-green-50 gap-1"
-                              : "border-orange-300 text-orange-700 bg-orange-50 gap-1"
-                          }
-                        >
-                          {a.tipo === "entrada" ? (
-                            <LogIn className="w-3 h-3" />
-                          ) : (
-                            <LogOut className="w-3 h-3" />
-                          )}
-                          {a.tipo === "entrada" ? "Entrada" : "Salida"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {new Date(a.fechaHora).toLocaleDateString("es-MX", {
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                        })}
-                      </TableCell>
-                      <TableCell className="font-mono text-sm">
-                        {new Date(a.fechaHora).toLocaleTimeString("es-MX", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          second: "2-digit",
-                        })}
-                      </TableCell>
+          </CardHeader>
+          <CardContent className="p-0">
+            {isLoading ? (
+              <div className="text-center py-12 text-slate-400">
+                Cargando asistencias...
+              </div>
+            ) : filteredAsistencias && filteredAsistencias.length > 0 ? (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Persona</TableHead>
+                      <TableHead>Transportista</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Fecha</TableHead>
+                      <TableHead>Hora</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredAsistencias.map((a: any) => (
+                      <TableRow key={a.id}>
+                        <TableCell className="font-medium">
+                          {a.personaNombre}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="w-2.5 h-2.5 rounded-full"
+                              style={{
+                                backgroundColor:
+                                  a.transportistaColor ?? "#3B82F6",
+                              }}
+                            />
+                            <span className="text-sm">
+                              {a.transportistaNombre}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={
+                              a.tipo === "entrada"
+                                ? "border-green-300 text-green-700 bg-green-50 gap-1"
+                                : "border-orange-300 text-orange-700 bg-orange-50 gap-1"
+                            }
+                          >
+                            {a.tipo === "entrada" ? (
+                              <LogIn className="w-3 h-3" />
+                            ) : (
+                              <LogOut className="w-3 h-3" />
+                            )}
+                            {a.tipo === "entrada" ? "Entrada" : "Salida"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {new Date(a.fechaHora).toLocaleDateString("es-MX", {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                          })}
+                        </TableCell>
+                        <TableCell className="font-mono text-sm">
+                          {new Date(a.fechaHora).toLocaleTimeString("es-MX", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            second: "2-digit",
+                          })}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <div className="text-center py-12 text-slate-400">
+                <History className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                <p>No se encontraron asistencias</p>
+                {hasFilters && (
+                  <Button
+                    variant="outline"
+                    className="mt-4"
+                    onClick={clearFilters}
+                  >
+                    Limpiar filtros
+                  </Button>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Results - Unidades */}
+      {tabActivo === "unidades" && (
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Bus className="w-5 h-5 text-slate-400" />
+                  Registros de Unidades
+                </CardTitle>
+                <CardDescription>
+                  {filteredUnidades?.length ?? 0} registros encontrados
+                </CardDescription>
+              </div>
             </div>
-          ) : (
-            <div className="text-center py-12 text-slate-400">
-              <History className="w-10 h-10 mx-auto mb-2 opacity-50" />
-              <p>No se encontraron asistencias</p>
-              {hasFilters && (
-                <Button
-                  variant="outline"
-                  className="mt-4"
-                  onClick={clearFilters}
-                >
-                  Limpiar filtros
-                </Button>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardHeader>
+          <CardContent className="p-0">
+            {isLoadingUnidades ? (
+              <div className="text-center py-12 text-slate-400">
+                Cargando registros de unidades...
+              </div>
+            ) : filteredUnidades && filteredUnidades.length > 0 ? (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Transportista</TableHead>
+                      <TableHead>Ruta / Tienda</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Fecha</TableHead>
+                      <TableHead>Hora</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredUnidades.map((a: any) => (
+                      <TableRow key={a.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="w-2.5 h-2.5 rounded-full"
+                              style={{
+                                backgroundColor:
+                                  a.transportistaColor ?? "#3B82F6",
+                              }}
+                            />
+                            <span className="font-medium text-sm">
+                              {a.transportistaNombre}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {a.ruta ? (
+                            <div className="flex items-center gap-1 text-sm">
+                              <MapPin className="w-3.5 h-3.5 text-blue-500" />
+                              {a.ruta}
+                            </div>
+                          ) : (
+                            <span className="text-slate-400 text-sm">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={
+                              a.tipo === "entrada"
+                                ? "border-green-300 text-green-700 bg-green-50 gap-1"
+                                : "border-orange-300 text-orange-700 bg-orange-50 gap-1"
+                            }
+                          >
+                            {a.tipo === "entrada" ? (
+                              <LogIn className="w-3 h-3" />
+                            ) : (
+                              <LogOut className="w-3 h-3" />
+                            )}
+                            {a.tipo === "entrada" ? "Entrada" : "Salida"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {new Date(a.fechaHora).toLocaleDateString("es-MX", {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                          })}
+                        </TableCell>
+                        <TableCell className="font-mono text-sm">
+                          {new Date(a.fechaHora).toLocaleTimeString("es-MX", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            second: "2-digit",
+                          })}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <div className="text-center py-12 text-slate-400">
+                <Bus className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                <p>No se encontraron registros de unidades</p>
+                {hasFilters && (
+                  <Button
+                    variant="outline"
+                    className="mt-4"
+                    onClick={clearFilters}
+                  >
+                    Limpiar filtros
+                  </Button>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
