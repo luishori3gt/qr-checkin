@@ -190,6 +190,15 @@ export const asistenciaRouter = createRouter({
     };
   }),
 
+  // Borrar TODAS las asistencias de personas
+  borrarTodo: publicQuery
+    .input(z.object({ confirmar: z.literal("BORRAR") }))
+    .mutation(async () => {
+      const db = getDb();
+      await db.delete(asistencias);
+      return { success: true, message: "Asistencias de personas eliminadas" };
+    }),
+
   // Asistencias recientes (últimas 20)
   recientes: publicQuery.query(async () => {
     const db = getDb();

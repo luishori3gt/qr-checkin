@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router";
 import { trpc } from "@/providers/trpc";
 import {
@@ -9,6 +10,8 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 import {
   ScanLine,
   Users,
@@ -17,10 +20,16 @@ import {
   Clock,
   Truck,
   Bus,
+  Trash2,
+  AlertTriangle,
 } from "lucide-react";
 
 export default function Dashboard() {
   const isAdmin = true;
+  const [showBorrar, setShowBorrar] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
+
+  const utils = trpc.useUtils();
 
   const { data: statsPersonas } =
     trpc.asistencias.estadisticasHoy.useQuery(undefined, {
@@ -37,6 +46,36 @@ export default function Dashboard() {
   const { data: personasList } = trpc.personas.list.useQuery();
   const { data: transportistasList } = trpc.transportistas.list.useQuery();
 
+  const borrarPersonas = trpc.asistencias.borrarTodo.useMutation({
+    onSuccess: () => {
+      utils.asistencias.estadisticasHoy.invalidate();
+      utils.asistencias.recientes.invalidate();
+      utils.asistencias.list.invalidate();
+      toast.success("Asistencias de personas eliminadas");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const borrarUnidades = trpc.transportistas.borrarTodo.useMutation({
+    onSuccess: () => {
+      utils.transportistas.estadisticasHoy.invalidate();
+      utils.transportistas.listAsistencias.invalidate();
+      toast.success("Asistencias de unidades eliminadas");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const handleBorrar = () => {
+    if (confirmText !== "BORRAR") {
+      toast.error('Escribe "BORRAR" para confirmar');
+      return;
+    }
+    borrarPersonas.mutate({ confirmar: "BORRAR" });
+    borrarUnidades.mutate({ confirmar: "BORRAR" });
+    setShowBorrar(false);
+    setConfirmText("");
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -47,12 +86,51 @@ export default function Dashboard() {
             Resumen de asistencias del dia en tiempo real
           </p>
         </div>
-        <Link to="/escaner">
-          <Button className="bg-blue-600 hover:bg-blue-700 text-white gap-2">
-            <ScanLine className="w-4 h-4" />
-            Escanear QR
-          </Button>
-        </Link>
+        <div className="flex gap-2">
+          {!showBorrar ? (
+            <Button
+              onClick={() => setShowBorrar(true)}
+              variant="outline"
+              className="border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700 gap-2"
+            >
+              <Trash2 className="w-4 h-4" />
+              Borrar dia
+            </Button>
+          ) : (
+            <div className="flex gap-2 items-center">
+              <Input
+                placeholder="Escribe BORRAR"
+                value={confirmText}
+                onChange={(e) => setConfirmText(e.target.value)}
+                className="w-36 text-sm"
+              />
+              <Button
+                onClick={handleBorrar}
+                className="bg-red-600 hover:bg-red-700 text-white gap-1"
+                size="sm"
+              >
+                <AlertTriangle className="w-3 h-3" />
+                Confirmar
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowBorrar(false);
+                  setConfirmText("");
+                }}
+                variant="outline"
+                size="sm"
+              >
+                Cancelar
+              </Button>
+            </div>
+          )}
+          <Link to="/escaner">
+            <Button className="bg-blue-600 hover:bg-blue-700 text-white gap-2">
+              <ScanLine className="w-4 h-4" />
+              Escanear QR
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Stats Cards */}

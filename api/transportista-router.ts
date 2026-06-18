@@ -158,6 +158,15 @@ export const transportistaRouter = createRouter({
       return query;
     }),
 
+  // Borrar TODAS las asistencias de unidades
+  borrarTodo: publicQuery
+    .input(z.object({ confirmar: z.literal("BORRAR") }))
+    .mutation(async () => {
+      const db = getDb();
+      await db.delete(asistenciasTransportistas);
+      return { success: true, message: "Asistencias de unidades eliminadas" };
+    }),
+
   // Estadisticas del dia para transportistas
   estadisticasHoy: publicQuery.query(async () => {
     const db = getDb();
