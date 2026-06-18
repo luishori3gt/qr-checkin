@@ -26,13 +26,12 @@ export default app;
 
 if (env.isProduction) {
   const { serve } = await import("@hono/node-server");
-  const { serveStatic } = await import("@hono/node-server/serve-static");
   const fs = await import("fs");
   const path = await import("path");
 
   const distPath = path.resolve(import.meta.dirname, "../dist/public");
 
-  // 1. Serve index.html with NO-CACHE headers for all SPA routes
+  // 1. Serve index.html with NO-CACHE for all SPA routes (BEFORE static files)
   const htmlRoutes = ["/", "/login", "/dashboard", "/escaner", "/personas", "/transportistas", "/historial", "/equipo", "/qr/:id"];
   for (const route of htmlRoutes) {
     app.get(route, (c) => {
@@ -44,19 +43,37 @@ if (env.isProduction) {
     });
   }
 
-  // 2. Serve static assets (JS/CSS) with aggressive no-cache
-  app.use("/assets/*", async (c, next) => {
-    await next();
-    c.header("Cache-Control", "no-store, no-cache, must-revalidate");
-  });
-  app.use("/assets/*", serveStatic({ root: "./dist/public" }));
-
-  // 3. SPA fallback — redirect unknown routes to dashboard
-  app.notFound((c) => {
-    const accept = c.req.header("accept") ?? "";
-    if (!accept.includes("text/html")) {
-      return c.json({ error: "Not Found" }, 404);
+  // 2. Serve ALL static files (including versioned assets) with no-cache
+  app.use("/*", async (c, next) => {
+    // Skip HTML routes (already handled above)
+    const reqPath = c.req.path;
+    if (htmlRoutes.some(r => reqPath === r || (r.includes(":") && reqPath.startsWith(r.split(":")[0])))) {
+      return next();
     }
+    
+    // Try to serve as static file
+    const filePath = path.join(distPath, reqPath);
+    if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+      const ext = path.extname(filePath);
+      const mimeTypes: Record<string, string> = {
+        ".js": "application/javascript",
+        ".css": "text/css",
+        ".svg": "image/svg+xml",
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".ico": "image/x-icon",
+      };
+      const contentType = mimeTypes[ext] || "application/octet-stream";
+      const content = fs.readFileSync(filePath);
+      c.header("Content-Type", contentType);
+      c.header("Cache-Control", "no-store, no-cache, must-revalidate");
+      return c.body(content);
+    }
+    return next();
+  });
+
+  // 3. SPA fallback
+  app.notFound((c) => {
     return c.redirect("/dashboard");
   });
 
