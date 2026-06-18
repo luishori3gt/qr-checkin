@@ -3,6 +3,7 @@ import { trpc } from "@/providers/trpc";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -19,6 +20,8 @@ import {
   Trash2,
   QrCode,
   Bus,
+  MapPin,
+  List,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 
@@ -41,6 +44,8 @@ export default function Transportistas() {
 
   const { data: transportistas, isLoading } =
     trpc.transportistas.list.useQuery();
+  const { data: lineasDisponibles } =
+    trpc.transportistas.lineasDisponibles.useQuery();
 
   const utils = trpc.useUtils();
 
@@ -206,6 +211,29 @@ export default function Transportistas() {
                   </div>
                 </div>
 
+                {/* Rutas / Tiendas */}
+                {t.rutas && t.rutas.length > 0 && (
+                  <div className="mt-3">
+                    <div className="flex items-center gap-1 mb-1.5">
+                      <MapPin className="w-3 h-3 text-slate-400" />
+                      <span className="text-xs font-medium text-slate-500">
+                        Tiendas / Rutas:
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {t.rutas.map((ruta: string) => (
+                        <Badge
+                          key={ruta}
+                          variant="outline"
+                          className="text-xs bg-slate-50"
+                        >
+                          {ruta}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* QR Code mini */}
                 {t.qrCode && (
                   <div className="mt-4 flex items-center justify-between bg-slate-50 rounded-lg p-3">
@@ -281,13 +309,28 @@ export default function Transportistas() {
             <div className="space-y-4 py-4">
               <div>
                 <label className="text-sm font-medium text-slate-700 mb-1 block">
-                  Nombre
+                  Linea del listado
                 </label>
-                <Input
-                  placeholder="Ej. Transportes del Norte"
-                  value={formNombre}
-                  onChange={(e) => setFormNombre(e.target.value)}
-                />
+                {lineasDisponibles && lineasDisponibles.length > 0 ? (
+                  <select
+                    value={formNombre}
+                    onChange={(e) => setFormNombre(e.target.value)}
+                    className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+                  >
+                    <option value="">Selecciona una linea...</option>
+                    {lineasDisponibles.map((linea) => (
+                      <option key={linea} value={linea}>
+                        {linea}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="text-sm text-orange-600 bg-orange-50 p-3 rounded-lg">
+                    Todas las lineas del listado ya estan creadas.
+                    <br />
+                    Para agregar mas, edita el archivo de rutas.
+                  </div>
+                )}
               </div>
               <div>
                 <label className="text-sm font-medium text-slate-700 mb-1 block">
@@ -325,7 +368,7 @@ export default function Transportistas() {
               </Button>
               <Button
                 onClick={handleCreate}
-                disabled={createTransportista.isPending}
+                disabled={createTransportista.isPending || !formNombre}
                 className="bg-blue-600 hover:bg-blue-700"
               >
                 {createTransportista.isPending ? "Creando..." : "Crear"}
@@ -442,7 +485,28 @@ export default function Transportistas() {
               <h3 className="text-lg font-bold text-slate-900 mt-4">
                 {selectedTransportista.nombre}
               </h3>
-              <p className="text-sm text-slate-500">
+              {selectedTransportista.rutas && selectedTransportista.rutas.length > 0 && (
+                <div className="mt-2">
+                  <div className="flex items-center justify-center gap-1 mb-1">
+                    <List className="w-3 h-3 text-slate-400" />
+                    <span className="text-xs text-slate-500">
+                      Tiendas asignadas:
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap justify-center gap-1">
+                    {selectedTransportista.rutas.map((ruta: string) => (
+                      <Badge
+                        key={ruta}
+                        variant="outline"
+                        className="text-xs bg-slate-50"
+                      >
+                        {ruta}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <p className="text-sm text-slate-500 mt-3">
                 Escanea para registrar llegada/salida de unidad
               </p>
               <div className="flex gap-2 mt-6">

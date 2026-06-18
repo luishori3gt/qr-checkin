@@ -19,7 +19,7 @@ import {
   MapPin,
   ArrowLeft,
 } from "lucide-react";
-import { getRutasPorLinea } from "@/data/rutas";
+import { getRutasPorLinea } from "@contracts/rutas";
 
 type ScanResult = {
   ok: boolean;

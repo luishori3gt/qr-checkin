@@ -4,11 +4,32 @@ import { getDb } from "./queries/connection";
 import { transportistas, asistenciasTransportistas } from "@db/schema";
 import { eq, desc, sql, and, gte } from "drizzle-orm";
 import crypto from "crypto";
+import { RUTAS_POR_LINEA, getRutasPorLinea, getLineas } from "../../contracts/rutas";
 
 export const transportistaRouter = createRouter({
+  // Listar lineas disponibles del archivo (no creadas aun)
+  lineasDisponibles: publicQuery.query(async () => {
+    const db = getDb();
+    const existing = await db.select().from(transportistas);
+    const existingNames = new Set(existing.map((t) => t.nombre.toLowerCase()));
+    return getLineas().filter((l) => !existingNames.has(l.toLowerCase()));
+  }),
+
+  // Obtener rutas de una linea
+  getRutas: publicQuery
+    .input(z.object({ nombre: z.string() }))
+    .query(async ({ input }) => {
+      return getRutasPorLinea(input.nombre);
+    }),
+
   list: publicQuery.query(async () => {
     const db = getDb();
-    return db.select().from(transportistas);
+    const all = await db.select().from(transportistas);
+    // Incluir rutas asociadas
+    return all.map((t) => ({
+      ...t,
+      rutas: getRutasPorLinea(t.nombre),
+    }));
   }),
 
   getById: publicQuery
@@ -19,7 +40,11 @@ export const transportistaRouter = createRouter({
         .select()
         .from(transportistas)
         .where(eq(transportistas.id, input.id));
-      return results[0] ?? null;
+      if (!results[0]) return null;
+      return {
+        ...results[0],
+        rutas: getRutasPorLinea(results[0].nombre),
+      };
     }),
 
   // Buscar transportista por QR (para el escaner)
@@ -31,7 +56,11 @@ export const transportistaRouter = createRouter({
         .select()
         .from(transportistas)
         .where(eq(transportistas.qrCode, input.qrCode));
-      return results[0] ?? null;
+      if (!results[0]) return null;
+      return {
+        ...results[0],
+        rutas: getRutasPorLinea(results[0].nombre),
+      };
     }),
 
   create: publicQuery
@@ -43,6 +72,14 @@ export const transportistaRouter = createRouter({
       })
     )
     .mutation(async ({ input }) => {
+      // Validar que el nombre exista en el listado de rutas
+      const rutas = getRutasPorLinea(input.nombre);
+      if (rutas.length === 0) {
+        throw new Error(
+          `La linea "${input.nombre}" no esta en el listado. Las lineas permitidas son: ${getLineas().join(", ")}`
+        );
+      }
+
       const db = getDb();
       // Generar QR unico para el transportista
       const qrData = `TRANSPORTISTA-${input.nombre}-${Date.now()}-${crypto.randomBytes(8).toString("hex")}`;
@@ -54,7 +91,7 @@ export const transportistaRouter = createRouter({
         color: input.color ?? "#3B82F6",
         qrCode,
       });
-      return { id: Number(result[0].insertId), qrCode };
+      return { id: Number(result[0].insertId), qrCode, rutas };
     }),
 
   update: publicQuery
