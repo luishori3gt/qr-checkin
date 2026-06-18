@@ -29,6 +29,23 @@ if (env.isProduction) {
   const { serveStaticFiles } = await import("./lib/vite");
   serveStaticFiles(app);
 
+  // Force no-cache for HTML routes — serve fresh index.html every time
+  const htmlRoutes = ["/", "/login", "/dashboard", "/escaner", "/personas", "/transportistas", "/historial", "/equipo"];
+  for (const route of htmlRoutes) {
+    app.get(route, async (c) => {
+      const fs = await import("fs");
+      const path = await import("path");
+      const indexPath = path.resolve(import.meta.dirname, "../dist/public/index.html");
+      let content = fs.readFileSync(indexPath, "utf-8");
+      // Inject cache-busting script
+      content = content.replace("<head>", `<head><meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate"><meta http-equiv="Pragma" content="no-cache"><meta http-equiv="Expires" content="0"><script>window.__APP_VERSION__="${Date.now()}";</script>`);
+      c.header("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+      c.header("Pragma", "no-cache");
+      c.header("Expires", "0");
+      return c.html(content);
+    });
+  }
+
   const port = parseInt(process.env.PORT || "3000");
   serve({ fetch: app.fetch, port }, () => {
     console.log(`Server running on http://localhost:${port}/`);
