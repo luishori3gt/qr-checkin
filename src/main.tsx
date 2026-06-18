@@ -6,8 +6,8 @@ import { TRPCProvider } from "@/providers/trpc";
 import { Toaster } from "@/components/ui/sonner";
 import App from "./App.tsx";
 
-// Force rebuild: 2025-06-16T00:45:00Z
-// Version: fix-loading-final
+// Cache-bust: 2025-06-18T20:00:00Z
+// Version: no-auth-redirect
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
