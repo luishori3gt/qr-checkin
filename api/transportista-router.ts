@@ -4,7 +4,28 @@ import { getDb } from "./queries/connection";
 import { transportistas, asistenciasTransportistas } from "@db/schema";
 import { eq, desc, sql, and, gte } from "drizzle-orm";
 import crypto from "crypto";
-import { RUTAS_POR_LINEA, getRutasPorLinea, getLineas } from "../../contracts/rutas";
+
+// Rutas por linea transportista - debe coincidir con contracts/rutas.ts
+const RUTAS_POR_LINEA: Record<string, string[]> = {
+  "Panda": ["Queretaro", "Puebla", "Toluca"],
+  "DJ": ["Herradura", "Interlomas", "Santa Fe", "Lilas"],
+  "Libra": ["Chapultepec", "Herradura", "Toluca"],
+  "Ledesma": ["Satelite"],
+  "Andame": ["Pilares", "Carso"],
+  "Aguilar": ["San Jeronimo", "San Miguel", "Rio Mayo"],
+};
+
+function getRutasPorLinea(nombreLinea: string): string[] {
+  if (RUTAS_POR_LINEA[nombreLinea]) return RUTAS_POR_LINEA[nombreLinea];
+  const key = Object.keys(RUTAS_POR_LINEA).find(
+    (k) => k.toLowerCase() === nombreLinea.toLowerCase()
+  );
+  return key ? RUTAS_POR_LINEA[key] : [];
+}
+
+function getLineas(): string[] {
+  return Object.keys(RUTAS_POR_LINEA);
+}
 
 export const transportistaRouter = createRouter({
   // Listar lineas disponibles del archivo (no creadas aun)
