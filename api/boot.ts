@@ -31,8 +31,8 @@ if (env.isProduction) {
 
   const distPath = path.resolve(import.meta.dirname, "../dist/public");
 
-  // 1. Serve index.html with NO-CACHE for all SPA routes (BEFORE static files)
-  const htmlRoutes = ["/", "/login", "/dashboard", "/escaner", "/personas", "/transportistas", "/historial", "/equipo", "/qr/:id"];
+  // 1. Serve index.html for all HTML routes with NO-CACHE
+  const htmlRoutes = ["/", "/login", "/dashboard", "/escaner", "/personas", "/transportistas", "/historial", "/equipo"];
   for (const route of htmlRoutes) {
     app.get(route, (c) => {
       const content = fs.readFileSync(path.join(distPath, "index.html"), "utf-8");
@@ -43,16 +43,13 @@ if (env.isProduction) {
     });
   }
 
-  // 2. Serve ALL static files (including versioned assets) with no-cache
-  app.use("/*", async (c, next) => {
-    // Skip HTML routes (already handled above)
+  // 2. Serve versioned assets from /app-*/ path
+  app.use("/app-:version/*", async (c) => {
     const reqPath = c.req.path;
-    if (htmlRoutes.some(r => reqPath === r || (r.includes(":") && reqPath.startsWith(r.split(":")[0])))) {
-      return next();
-    }
-    
-    // Try to serve as static file
-    const filePath = path.join(distPath, reqPath);
+    // Extract the path after /app-xxx/
+    const assetPath = reqPath.replace(/\/app-[^/]+\//, "");
+    const filePath = path.join(distPath, assetPath);
+
     if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
       const ext = path.extname(filePath);
       const mimeTypes: Record<string, string> = {
@@ -62,6 +59,7 @@ if (env.isProduction) {
         ".png": "image/png",
         ".jpg": "image/jpeg",
         ".ico": "image/x-icon",
+        ".woff2": "font/woff2",
       };
       const contentType = mimeTypes[ext] || "application/octet-stream";
       const content = fs.readFileSync(filePath);
@@ -69,12 +67,16 @@ if (env.isProduction) {
       c.header("Cache-Control", "no-store, no-cache, must-revalidate");
       return c.body(content);
     }
-    return next();
+    return c.notFound();
   });
 
   // 3. SPA fallback
   app.notFound((c) => {
-    return c.redirect("/dashboard");
+    const accept = c.req.header("accept") ?? "";
+    if (accept.includes("text/html")) {
+      return c.redirect("/dashboard");
+    }
+    return c.json({ error: "Not Found" }, 404);
   });
 
   const port = parseInt(process.env.PORT || "3000");
