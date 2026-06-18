@@ -28,7 +28,7 @@ const PRESET_COLORS = [
 ];
 
 export default function Transportistas() {
-  const isAdmin = false;
+  const isAdmin = true;
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);

@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 
 export default function Dashboard() {
-  const isAdmin = false;
+  const isAdmin = true;
 
   const { data: statsPersonas } =
     trpc.asistencias.estadisticasHoy.useQuery(undefined, {
