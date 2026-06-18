@@ -11,7 +11,8 @@ import fs from "fs";
 import path from "path";
 
 const app = new Hono<{ Bindings: HttpBindings }>();
-const distPath = path.resolve(import.meta.dirname, "../dist/public");
+const __dirname = import.meta.dirname || path.dirname(new URL(import.meta.url).pathname);
+const distPath = path.resolve(__dirname, "../dist/public");
 
 app.use(bodyLimit({ maxSize: 50 * 1024 * 1024 }));
 app.get(Paths.oauthCallback, createOAuthCallbackHandler());
