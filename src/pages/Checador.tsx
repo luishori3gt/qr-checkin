@@ -142,43 +142,40 @@ export default function Checador() {
     }
   };
 
-  const handleUnidadScanned = async (qrCode: string) => {
-    try {
-      // Llamamos directamente al endpoint de tRPC para buscar por QR
-      const response = await fetch(`/api/trpc/transportistas.getByQrCode?input=${encodeURIComponent(JSON.stringify({ qrCode }))}`);
-      const data = await response.json();
-      
-      if (!data.result?.data) {
+  // Query para buscar transportista por QR (usamos trpc.useUtils para llamarla)
+  const getByQrCodeMut = trpc.transportistas.getByQrCode.useMutation({
+    onSuccess: (transportista) => {
+      if (!transportista) {
         setResult({ ok: false, msg: "QR no valido o transportista no encontrado" });
         toast.error("QR no valido o transportista no encontrado");
         return;
       }
-
-      const transportista = data.result.data;
       const rutas = getRutasPorLinea(transportista.nombre);
-
       setScannedTransportista({
         id: transportista.id,
         nombre: transportista.nombre,
         color: transportista.color || "#3B82F6",
       });
-      setPendingQrCode(qrCode);
       setSelectedRuta("");
       setCustomRuta("");
       setShowCustomInput(false);
 
       if (rutas.length > 0) {
-        // Mostrar modal con rutas
         setShowRutaModal(true);
       } else {
-        // No hay rutas configuradas, mostrar input directo
         setShowRutaModal(true);
         setShowCustomInput(true);
       }
-    } catch {
+    },
+    onError: () => {
       setResult({ ok: false, msg: "Error al buscar transportista" });
       toast.error("Error al buscar transportista");
-    }
+    },
+  });
+
+  const handleUnidadScanned = (qrCode: string) => {
+    setPendingQrCode(qrCode);
+    getByQrCodeMut.mutate({ qrCode });
   };
 
   const confirmarRegistroUnidad = () => {
