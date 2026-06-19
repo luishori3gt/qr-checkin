@@ -98,23 +98,14 @@ export default function Historial() {
     setTipoFilter("all");
   };
 
-  // Export to CSV
-  const exportCSV = () => {
+  // Export to CSV — Personas
+  const exportCSVPersonas = () => {
     if (!filteredAsistencias || filteredAsistencias.length === 0) {
-      toast.error("No hay datos para exportar");
+      toast.error("No hay datos de personas para exportar");
       return;
     }
 
-    const headers = [
-      "ID",
-      "Persona",
-      "Transportista",
-      "Tipo",
-      "Fecha",
-      "Hora",
-      "Notas",
-    ];
-
+    const headers = ["ID", "Persona", "Transportista", "Tipo", "Fecha", "Hora", "Tiempo", "Notas"];
     const rows = filteredAsistencias.map((a: any) => [
       a.id,
       a.personaNombre ?? "N/A",
@@ -122,120 +113,147 @@ export default function Historial() {
       a.tipo,
       new Date(a.fechaHora).toLocaleDateString("es-MX"),
       new Date(a.fechaHora).toLocaleTimeString("es-MX"),
+      estaEnTiempo(a.fechaHora) ? "En tiempo" : "Fuera de tiempo",
       a.notas ?? "",
     ]);
-
     const csvContent = [headers, ...rows]
-      .map((row) =>
-        row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")
-      )
+      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
       .join("\n");
-
-    const blob = new Blob(["\uFEFF" + csvContent], {
-      type: "text/csv;charset=utf-8;",
-    });
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `asistencias_${new Date().toISOString().split("T")[0]}.csv`;
+    link.download = `personas_${new Date().toISOString().split("T")[0]}.csv`;
     link.click();
-
-    toast.success("Archivo CSV descargado");
+    toast.success("CSV de personas descargado");
   };
 
-  // Export to Excel (.xlsx) with formatting
+  // Export to CSV — Unidades
+  const exportCSVUnidades = () => {
+    if (!filteredUnidades || filteredUnidades.length === 0) {
+      toast.error("No hay datos de unidades para exportar");
+      return;
+    }
+    const headers = ["ID", "Linea Transportista", "Ruta/Tienda", "Tipo", "Fecha", "Hora", "Tiempo", "Notas"];
+    const rows = filteredUnidades.map((a: any) => [
+      a.id,
+      a.transportistaNombre ?? "N/A",
+      a.ruta ?? "Sin ruta",
+      a.tipo,
+      new Date(a.fechaHora).toLocaleDateString("es-MX"),
+      new Date(a.fechaHora).toLocaleTimeString("es-MX"),
+      estaEnTiempo(a.fechaHora) ? "En tiempo" : "Fuera de tiempo",
+      a.notas ?? "",
+    ]);
+    const csvContent = [headers, ...rows]
+      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `unidades_${new Date().toISOString().split("T")[0]}.csv`;
+    link.click();
+    toast.success("CSV de unidades descargado");
+  };
+
+  // Export to Excel (.xlsx) with 2 sheets: Personas and Unidades
   const exportExcel = () => {
-    if (!filteredAsistencias || filteredAsistencias.length === 0) {
+    const wb = XLSX.utils.book_new();
+    const fechaStr = new Date().toISOString().split("T")[0];
+
+    // ===== PESTAÑA 1: PERSONAS =====
+    if (filteredAsistencias && filteredAsistencias.length > 0) {
+      const dataPersonas = filteredAsistencias.map((a: any) => ({
+        ID: a.id,
+        Persona: a.personaNombre ?? "N/A",
+        Transportista: a.transportistaNombre ?? "N/A",
+        Tipo: a.tipo === "entrada" ? "Entrada" : "Salida",
+        Fecha: new Date(a.fechaHora).toLocaleDateString("es-MX", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        }),
+        Hora: new Date(a.fechaHora).toLocaleTimeString("es-MX", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false,
+        }),
+        Tiempo: estaEnTiempo(a.fechaHora) ? "En tiempo" : "Fuera de tiempo",
+        Notas: a.notas ?? "",
+      }));
+
+      const wsPersonas = XLSX.utils.json_to_sheet(dataPersonas);
+      wsPersonas["!cols"] = [
+        { wch: 6 }, { wch: 28 }, { wch: 24 }, { wch: 10 },
+        { wch: 12 }, { wch: 10 }, { wch: 18 }, { wch: 30 },
+      ];
+      // Header style
+      const rangeP = XLSX.utils.decode_range(wsPersonas["!ref"] ?? "A1");
+      for (let C = rangeP.s.c; C <= rangeP.e.c; ++C) {
+        const addr = XLSX.utils.encode_cell({ r: 0, c: C });
+        if (wsPersonas[addr]) {
+          wsPersonas[addr].s = {
+            font: { bold: true, color: { rgb: "FFFFFF" } },
+            fill: { fgColor: { rgb: "3B82F6" } },
+            alignment: { horizontal: "center" },
+          };
+        }
+      }
+      XLSX.utils.book_append_sheet(wb, wsPersonas, "Personas");
+    }
+
+    // ===== PESTAÑA 2: UNIDADES =====
+    if (filteredUnidades && filteredUnidades.length > 0) {
+      const dataUnidades = filteredUnidades.map((a: any) => ({
+        ID: a.id,
+        "Linea Transportista": a.transportistaNombre ?? "N/A",
+        "Ruta / Tienda": a.ruta ?? "Sin ruta",
+        Tipo: a.tipo === "entrada" ? "Entrada" : "Salida",
+        Fecha: new Date(a.fechaHora).toLocaleDateString("es-MX", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        }),
+        Hora: new Date(a.fechaHora).toLocaleTimeString("es-MX", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false,
+        }),
+        Tiempo: estaEnTiempo(a.fechaHora) ? "En tiempo" : "Fuera de tiempo",
+        Notas: a.notas ?? "",
+      }));
+
+      const wsUnidades = XLSX.utils.json_to_sheet(dataUnidades);
+      wsUnidades["!cols"] = [
+        { wch: 6 }, { wch: 24 }, { wch: 20 }, { wch: 10 },
+        { wch: 12 }, { wch: 10 }, { wch: 18 }, { wch: 30 },
+      ];
+      // Header style
+      const rangeU = XLSX.utils.decode_range(wsUnidades["!ref"] ?? "A1");
+      for (let C = rangeU.s.c; C <= rangeU.e.c; ++C) {
+        const addr = XLSX.utils.encode_cell({ r: 0, c: C });
+        if (wsUnidades[addr]) {
+          wsUnidades[addr].s = {
+            font: { bold: true, color: { rgb: "FFFFFF" } },
+            fill: { fgColor: { rgb: "7C3AED" } },
+            alignment: { horizontal: "center" },
+          };
+        }
+      }
+      XLSX.utils.book_append_sheet(wb, wsUnidades, "Unidades");
+    }
+
+    if (
+      (!filteredAsistencias || filteredAsistencias.length === 0) &&
+      (!filteredUnidades || filteredUnidades.length === 0)
+    ) {
       toast.error("No hay datos para exportar");
       return;
     }
 
-    const data = filteredAsistencias.map((a: any) => ({
-      ID: a.id,
-      Persona: a.personaNombre ?? "N/A",
-      Transportista: a.transportistaNombre ?? "N/A",
-      Tipo: a.tipo === "entrada" ? "Entrada" : "Salida",
-      Fecha: new Date(a.fechaHora).toLocaleDateString("es-MX", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-      }),
-      Hora: new Date(a.fechaHora).toLocaleTimeString("es-MX", {
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: false,
-      }),
-      "Fecha Completa": new Date(a.fechaHora).toLocaleString("es-MX"),
-      Notas: a.notas ?? "",
-    }));
-
-    const ws = XLSX.utils.json_to_sheet(data);
-    const colWidths = [
-      { wch: 6 },
-      { wch: 28 },
-      { wch: 24 },
-      { wch: 10 },
-      { wch: 12 },
-      { wch: 10 },
-      { wch: 22 },
-      { wch: 30 },
-    ];
-    ws["!cols"] = colWidths;
-
-    const range = XLSX.utils.decode_range(ws["!ref"] ?? "A1");
-    for (let C = range.s.c; C <= range.e.c; ++C) {
-      const cellAddress = XLSX.utils.encode_cell({ r: 0, c: C });
-      if (!ws[cellAddress]) continue;
-      ws[cellAddress].s = {
-        font: { bold: true, color: { rgb: "FFFFFF" } },
-        fill: { fgColor: { rgb: "3B82F6" } },
-        alignment: { horizontal: "center" },
-      };
-    }
-
-    const wb = XLSX.utils.book_new();
-
-    const totalEntradas = filteredAsistencias.filter(
-      (a: any) => a.tipo === "entrada"
-    ).length;
-    const totalSalidas = filteredAsistencias.filter(
-      (a: any) => a.tipo === "salida"
-    ).length;
-
-    const summaryData = [
-      { "": "Reporte de Asistencias QR Check-In" },
-      { "": "" },
-      {
-        Campo: "Fecha de generacion",
-        Valor: new Date().toLocaleString("es-MX"),
-      },
-      { Campo: "Total registros", Valor: filteredAsistencias.length },
-      { Campo: "Total entradas", Valor: totalEntradas },
-      { Campo: "Total salidas", Valor: totalSalidas },
-      {
-        Campo: "Rango de fechas",
-        Valor:
-          fechaDesde && fechaHasta
-            ? `${fechaDesde} al ${fechaHasta}`
-            : "Todos",
-      },
-    ];
-    const wsSummary = XLSX.utils.json_to_sheet(summaryData);
-    wsSummary["!cols"] = [{ wch: 24 }, { wch: 40 }];
-
-    if (wsSummary["A1"]) {
-      wsSummary["A1"].s = {
-        font: { bold: true, sz: 14, color: { rgb: "1E40AF" } },
-      };
-    }
-
-    XLSX.utils.book_append_sheet(wb, wsSummary, "Resumen");
-    XLSX.utils.book_append_sheet(wb, ws, "Asistencias");
-
-    const fechaStr = new Date().toISOString().split("T")[0];
     XLSX.writeFile(wb, `asistencias_${fechaStr}.xlsx`);
-
-    toast.success("Archivo Excel descargado con formato");
+    toast.success("Excel descargado con 2 pestañas: Personas y Unidades");
   };
 
   return (
@@ -250,24 +268,36 @@ export default function Historial() {
             Registro completo de entradas y salidas
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button
             onClick={exportExcel}
             variant="outline"
             className="gap-2 border-green-300 hover:bg-green-50 hover:text-green-700"
-            disabled={!filteredAsistencias || filteredAsistencias.length === 0}
+            disabled={
+              (!filteredAsistencias || filteredAsistencias.length === 0) &&
+              (!filteredUnidades || filteredUnidades.length === 0)
+            }
           >
             <FileSpreadsheet className="w-4 h-4" />
-            Exportar Excel
+            Exportar Excel (2 pestañas)
           </Button>
           <Button
-            onClick={exportCSV}
+            onClick={exportCSVPersonas}
             variant="outline"
-            className="gap-2"
+            className="gap-2 border-blue-300 hover:bg-blue-50 hover:text-blue-700"
             disabled={!filteredAsistencias || filteredAsistencias.length === 0}
           >
             <Download className="w-4 h-4" />
-            CSV
+            CSV Personas
+          </Button>
+          <Button
+            onClick={exportCSVUnidades}
+            variant="outline"
+            className="gap-2 border-purple-300 hover:bg-purple-50 hover:text-purple-700"
+            disabled={!filteredUnidades || filteredUnidades.length === 0}
+          >
+            <Download className="w-4 h-4" />
+            CSV Unidades
           </Button>
         </div>
       </div>
