@@ -250,154 +250,169 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Indicadores de Tiempo — Personas */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Card className="border-green-200 bg-green-50/50">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center shrink-0">
-                <CheckCircle2 className="w-5 h-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-xs text-green-600 font-medium">
-                  Personas EN TIEMPO (antes 6:00 AM)
-                </p>
-                <p className="text-2xl font-bold text-green-700">
-                  {entradasPersonasEnTiempo.length}
-                </p>
-              </div>
-            </div>
-            {entradasPersonasEnTiempo.length > 0 && (
-              <div className="mt-3 flex flex-wrap gap-1">
-                {entradasPersonasEnTiempo.slice(0, 8).map((a: any) => (
-                  <Badge
-                    key={a.id}
-                    variant="outline"
-                    className="bg-white border-green-300 text-green-700 text-xs"
-                  >
-                    {a.personaNombre}
-                  </Badge>
-                ))}
-                {entradasPersonasEnTiempo.length > 8 && (
-                  <span className="text-xs text-green-600">
-                    +{entradasPersonasEnTiempo.length - 8} mas
-                  </span>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+      {/* NIVEL DE SERVICIO — Personas y Unidades */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Nivel de Servicio Personas */}
+        {(() => {
+          const totalPersonas = entradasPersonasHoy.length;
+          const enTiempoPersonas = entradasPersonasEnTiempo.length;
+          const fueraTiempoPersonas = entradasPersonasFueraTiempo.length;
+          const pctPersonas =
+            totalPersonas > 0
+              ? Math.round((enTiempoPersonas / totalPersonas) * 100)
+              : 0;
+          const colorPersonas =
+            pctPersonas >= 80
+              ? "green"
+              : pctPersonas >= 50
+                ? "orange"
+                : "red";
+          const colors: Record<string, { bg: string; border: string; text: string; bar: string; badge: string }> =
+            {
+              green: {
+                bg: "bg-green-50",
+                border: "border-green-200",
+                text: "text-green-700",
+                bar: "bg-green-500",
+                badge: "bg-green-100 text-green-700 border-green-300",
+              },
+              orange: {
+                bg: "bg-orange-50",
+                border: "border-orange-200",
+                text: "text-orange-700",
+                bar: "bg-orange-500",
+                badge: "bg-orange-100 text-orange-700 border-orange-300",
+              },
+              red: {
+                bg: "bg-red-50",
+                border: "border-red-200",
+                text: "text-red-700",
+                bar: "bg-red-500",
+                badge: "bg-red-100 text-red-700 border-red-300",
+              },
+            };
+          const c = colors[colorPersonas];
 
-        <Card className="border-red-200 bg-red-50/50">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center shrink-0">
-                <XCircle className="w-5 h-5 text-red-600" />
-              </div>
-              <div>
-                <p className="text-xs text-red-600 font-medium">
-                  Personas FUERA DE TIEMPO (despues 6:00 AM)
-                </p>
-                <p className="text-2xl font-bold text-red-700">
-                  {entradasPersonasFueraTiempo.length}
-                </p>
-              </div>
-            </div>
-            {entradasPersonasFueraTiempo.length > 0 && (
-              <div className="mt-3 flex flex-wrap gap-1">
-                {entradasPersonasFueraTiempo.slice(0, 8).map((a: any) => (
-                  <Badge
-                    key={a.id}
-                    variant="outline"
-                    className="bg-white border-red-300 text-red-700 text-xs"
-                  >
-                    {a.personaNombre}
-                  </Badge>
-                ))}
-                {entradasPersonasFueraTiempo.length > 8 && (
-                  <span className="text-xs text-red-600">
-                    +{entradasPersonasFueraTiempo.length - 8} mas
+          return (
+            <Card className={`${c.border} ${c.bg}`}>
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Users className={`w-5 h-5 ${c.text}`} />
+                    <span className="text-sm font-semibold text-slate-700">
+                      Nivel de Servicio — Personas
+                    </span>
+                  </div>
+                  <span className={`text-4xl font-bold ${c.text}`}>
+                    {pctPersonas}%
                   </span>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+                </div>
+                {/* Barra de progreso */}
+                <div className="w-full h-3 bg-white rounded-full overflow-hidden mb-3 border border-slate-200">
+                  <div
+                    className={`h-full ${c.bar} rounded-full transition-all`}
+                    style={{ width: `${pctPersonas}%` }}
+                  />
+                </div>
+                {/* Desglose */}
+                <div className="flex items-center justify-between text-xs text-slate-600">
+                  <Badge variant="outline" className={c.badge}>
+                    <CheckCircle2 className="w-3 h-3 mr-1" />
+                    {enTiempoPersonas} en tiempo
+                  </Badge>
+                  <Badge variant="outline" className="bg-white border-red-300 text-red-700">
+                    <XCircle className="w-3 h-3 mr-1" />
+                    {fueraTiempoPersonas} fuera de tiempo
+                  </Badge>
+                  <span className="font-medium">
+                    Total: {totalPersonas}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })()}
 
-      {/* Indicadores de Tiempo — Unidades */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Card className="border-green-200 bg-green-50/50">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center shrink-0">
-                <CheckCircle2 className="w-5 h-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-xs text-green-600 font-medium">
-                  Unidades EN TIEMPO (antes 6:00 AM)
-                </p>
-                <p className="text-2xl font-bold text-green-700">
-                  {entradasUnidadesEnTiempo.length}
-                </p>
-              </div>
-            </div>
-            {entradasUnidadesEnTiempo.length > 0 && (
-              <div className="mt-3 flex flex-wrap gap-1">
-                {entradasUnidadesEnTiempo.slice(0, 8).map((a: any) => (
-                  <Badge
-                    key={a.id}
-                    variant="outline"
-                    className="bg-white border-green-300 text-green-700 text-xs"
-                  >
-                    {a.transportistaNombre} — {a.ruta || "Sin ruta"}
-                  </Badge>
-                ))}
-                {entradasUnidadesEnTiempo.length > 8 && (
-                  <span className="text-xs text-green-600">
-                    +{entradasUnidadesEnTiempo.length - 8} mas
-                  </span>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {/* Nivel de Servicio Unidades */}
+        {(() => {
+          const totalUnidades = entradasUnidadesHoy.length;
+          const enTiempoUnidades = entradasUnidadesEnTiempo.length;
+          const fueraTiempoUnidades = entradasUnidadesFueraTiempo.length;
+          const pctUnidades =
+            totalUnidades > 0
+              ? Math.round((enTiempoUnidades / totalUnidades) * 100)
+              : 0;
+          const colorUnidades =
+            pctUnidades >= 80
+              ? "green"
+              : pctUnidades >= 50
+                ? "orange"
+                : "red";
+          const colors: Record<string, { bg: string; border: string; text: string; bar: string; badge: string }> =
+            {
+              green: {
+                bg: "bg-green-50",
+                border: "border-green-200",
+                text: "text-green-700",
+                bar: "bg-green-500",
+                badge: "bg-green-100 text-green-700 border-green-300",
+              },
+              orange: {
+                bg: "bg-orange-50",
+                border: "border-orange-200",
+                text: "text-orange-700",
+                bar: "bg-orange-500",
+                badge: "bg-orange-100 text-orange-700 border-orange-300",
+              },
+              red: {
+                bg: "bg-red-50",
+                border: "border-red-200",
+                text: "text-red-700",
+                bar: "bg-red-500",
+                badge: "bg-red-100 text-red-700 border-red-300",
+              },
+            };
+          const c = colors[colorUnidades];
 
-        <Card className="border-red-200 bg-red-50/50">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center shrink-0">
-                <XCircle className="w-5 h-5 text-red-600" />
-              </div>
-              <div>
-                <p className="text-xs text-red-600 font-medium">
-                  Unidades FUERA DE TIEMPO (despues 6:00 AM)
-                </p>
-                <p className="text-2xl font-bold text-red-700">
-                  {entradasUnidadesFueraTiempo.length}
-                </p>
-              </div>
-            </div>
-            {entradasUnidadesFueraTiempo.length > 0 && (
-              <div className="mt-3 flex flex-wrap gap-1">
-                {entradasUnidadesFueraTiempo.slice(0, 8).map((a: any) => (
-                  <Badge
-                    key={a.id}
-                    variant="outline"
-                    className="bg-white border-red-300 text-red-700 text-xs"
-                  >
-                    {a.transportistaNombre} — {a.ruta || "Sin ruta"}
-                  </Badge>
-                ))}
-                {entradasUnidadesFueraTiempo.length > 8 && (
-                  <span className="text-xs text-red-600">
-                    +{entradasUnidadesFueraTiempo.length - 8} mas
+          return (
+            <Card className={`${c.border} ${c.bg}`}>
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Bus className={`w-5 h-5 ${c.text}`} />
+                    <span className="text-sm font-semibold text-slate-700">
+                      Nivel de Servicio — Unidades
+                    </span>
+                  </div>
+                  <span className={`text-4xl font-bold ${c.text}`}>
+                    {pctUnidades}%
                   </span>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                </div>
+                {/* Barra de progreso */}
+                <div className="w-full h-3 bg-white rounded-full overflow-hidden mb-3 border border-slate-200">
+                  <div
+                    className={`h-full ${c.bar} rounded-full transition-all`}
+                    style={{ width: `${pctUnidades}%` }}
+                  />
+                </div>
+                {/* Desglose */}
+                <div className="flex items-center justify-between text-xs text-slate-600">
+                  <Badge variant="outline" className={c.badge}>
+                    <CheckCircle2 className="w-3 h-3 mr-1" />
+                    {enTiempoUnidades} en tiempo
+                  </Badge>
+                  <Badge variant="outline" className="bg-white border-red-300 text-red-700">
+                    <XCircle className="w-3 h-3 mr-1" />
+                    {fueraTiempoUnidades} fuera de tiempo
+                  </Badge>
+                  <span className="font-medium">
+                    Total: {totalUnidades}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })()}
       </div>
 
       {/* Unidades por Ruta — Tabla resumen */}
