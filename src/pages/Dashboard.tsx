@@ -22,7 +22,21 @@ import {
   Bus,
   Trash2,
   AlertTriangle,
+  CheckCircle2,
+  MapPin,
+  Timer,
+  XCircle,
 } from "lucide-react";
+
+// Funcion: antes de las 6:00 AM = EN TIEMPO, despues = FUERA DE TIEMPO
+const estaEnTiempo = (fechaHora: Date | string): boolean => {
+  const fecha = new Date(fechaHora);
+  const horas = fecha.getHours();
+  const minutos = fecha.getMinutes();
+  const totalMinutos = horas * 60 + minutos;
+  const limiteMinutos = 6 * 60; // 6:00 AM
+  return totalMinutos <= limiteMinutos;
+};
 
 export default function Dashboard() {
   const isAdmin = true;
@@ -41,6 +55,10 @@ export default function Dashboard() {
   );
   const { data: statsUnidades } =
     trpc.transportistas.estadisticasHoy.useQuery(undefined, {
+      refetchInterval: 5000,
+    });
+  const { data: asistenciasUnidadesHoy } =
+    trpc.transportistas.listAsistencias.useQuery(undefined, {
       refetchInterval: 5000,
     });
   const { data: personasList } = trpc.personas.list.useQuery();
@@ -76,6 +94,38 @@ export default function Dashboard() {
     setConfirmText("");
   };
 
+  // Calcular estadisticas de tiempo para personas
+  const entradasPersonasHoy = (recientesPersonas || []).filter(
+    (a: any) => a.tipo === "entrada"
+  );
+  const entradasPersonasEnTiempo = entradasPersonasHoy.filter((a: any) =>
+    estaEnTiempo(a.fechaHora)
+  );
+  const entradasPersonasFueraTiempo = entradasPersonasHoy.filter(
+    (a: any) => !estaEnTiempo(a.fechaHora)
+  );
+
+  // Calcular estadisticas de tiempo para unidades
+  const entradasUnidadesHoy = (statsUnidades?.recientes || []).filter(
+    (a: any) => a.tipo === "entrada"
+  );
+  const entradasUnidadesEnTiempo = entradasUnidadesHoy.filter((a: any) =>
+    estaEnTiempo(a.fechaHora)
+  );
+  const entradasUnidadesFueraTiempo = entradasUnidadesHoy.filter(
+    (a: any) => !estaEnTiempo(a.fechaHora)
+  );
+
+  // Agrupar unidades por ruta
+  const unidadesPorRuta = (asistenciasUnidadesHoy || [])
+    .filter((a: any) => a.tipo === "entrada" && a.ruta)
+    .reduce((acc: Record<string, any[]>, u: any) => {
+      const key = `${u.transportistaNombre} | ${u.ruta}`;
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(u);
+      return acc;
+    }, {} as Record<string, any[]>);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -83,7 +133,7 @@ export default function Dashboard() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
           <p className="text-slate-500 mt-1">
-            Resumen de asistencias del dia en tiempo real
+            Resumen de asistencias del dia — Limite: 6:00 AM
           </p>
         </div>
         <div className="flex gap-2">
@@ -200,6 +250,225 @@ export default function Dashboard() {
         </Card>
       </div>
 
+      {/* Indicadores de Tiempo — Personas */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Card className="border-green-200 bg-green-50/50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center shrink-0">
+                <CheckCircle2 className="w-5 h-5 text-green-600" />
+              </div>
+              <div>
+                <p className="text-xs text-green-600 font-medium">
+                  Personas EN TIEMPO (antes 6:00 AM)
+                </p>
+                <p className="text-2xl font-bold text-green-700">
+                  {entradasPersonasEnTiempo.length}
+                </p>
+              </div>
+            </div>
+            {entradasPersonasEnTiempo.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-1">
+                {entradasPersonasEnTiempo.slice(0, 8).map((a: any) => (
+                  <Badge
+                    key={a.id}
+                    variant="outline"
+                    className="bg-white border-green-300 text-green-700 text-xs"
+                  >
+                    {a.personaNombre}
+                  </Badge>
+                ))}
+                {entradasPersonasEnTiempo.length > 8 && (
+                  <span className="text-xs text-green-600">
+                    +{entradasPersonasEnTiempo.length - 8} mas
+                  </span>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="border-red-200 bg-red-50/50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center shrink-0">
+                <XCircle className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                <p className="text-xs text-red-600 font-medium">
+                  Personas FUERA DE TIEMPO (despues 6:00 AM)
+                </p>
+                <p className="text-2xl font-bold text-red-700">
+                  {entradasPersonasFueraTiempo.length}
+                </p>
+              </div>
+            </div>
+            {entradasPersonasFueraTiempo.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-1">
+                {entradasPersonasFueraTiempo.slice(0, 8).map((a: any) => (
+                  <Badge
+                    key={a.id}
+                    variant="outline"
+                    className="bg-white border-red-300 text-red-700 text-xs"
+                  >
+                    {a.personaNombre}
+                  </Badge>
+                ))}
+                {entradasPersonasFueraTiempo.length > 8 && (
+                  <span className="text-xs text-red-600">
+                    +{entradasPersonasFueraTiempo.length - 8} mas
+                  </span>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Indicadores de Tiempo — Unidades */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Card className="border-green-200 bg-green-50/50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center shrink-0">
+                <CheckCircle2 className="w-5 h-5 text-green-600" />
+              </div>
+              <div>
+                <p className="text-xs text-green-600 font-medium">
+                  Unidades EN TIEMPO (antes 6:00 AM)
+                </p>
+                <p className="text-2xl font-bold text-green-700">
+                  {entradasUnidadesEnTiempo.length}
+                </p>
+              </div>
+            </div>
+            {entradasUnidadesEnTiempo.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-1">
+                {entradasUnidadesEnTiempo.slice(0, 8).map((a: any) => (
+                  <Badge
+                    key={a.id}
+                    variant="outline"
+                    className="bg-white border-green-300 text-green-700 text-xs"
+                  >
+                    {a.transportistaNombre} — {a.ruta || "Sin ruta"}
+                  </Badge>
+                ))}
+                {entradasUnidadesEnTiempo.length > 8 && (
+                  <span className="text-xs text-green-600">
+                    +{entradasUnidadesEnTiempo.length - 8} mas
+                  </span>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="border-red-200 bg-red-50/50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center shrink-0">
+                <XCircle className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                <p className="text-xs text-red-600 font-medium">
+                  Unidades FUERA DE TIEMPO (despues 6:00 AM)
+                </p>
+                <p className="text-2xl font-bold text-red-700">
+                  {entradasUnidadesFueraTiempo.length}
+                </p>
+              </div>
+            </div>
+            {entradasUnidadesFueraTiempo.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-1">
+                {entradasUnidadesFueraTiempo.slice(0, 8).map((a: any) => (
+                  <Badge
+                    key={a.id}
+                    variant="outline"
+                    className="bg-white border-red-300 text-red-700 text-xs"
+                  >
+                    {a.transportistaNombre} — {a.ruta || "Sin ruta"}
+                  </Badge>
+                ))}
+                {entradasUnidadesFueraTiempo.length > 8 && (
+                  <span className="text-xs text-red-600">
+                    +{entradasUnidadesFueraTiempo.length - 8} mas
+                  </span>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Unidades por Ruta — Tabla resumen */}
+      {Object.keys(unidadesPorRuta).length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <MapPin className="w-5 h-5 text-slate-400" />
+              Unidades por Ruta / Tienda
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Entradas de hoy agrupadas por linea y ruta
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {Object.entries(unidadesPorRuta)
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([key, registros]: [string, any[]]) => {
+                  const [linea, ruta] = key.split(" | ");
+                  const enTiempoCount = registros.filter((r) =>
+                    estaEnTiempo(r.fechaHora)
+                  ).length;
+                  const fueraTiempoCount =
+                    registros.length - enTiempoCount;
+                  return (
+                    <div
+                      key={key}
+                      className="flex items-center justify-between p-3 bg-slate-50 rounded-lg"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center shrink-0">
+                          <Bus className="w-4 h-4 text-blue-600" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-medium text-slate-900 text-sm truncate">
+                            {linea}
+                          </p>
+                          <div className="flex items-center gap-1 text-xs text-slate-500">
+                            <MapPin className="w-3 h-3" />
+                            {ruta}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <div className="flex items-center gap-1">
+                          {enTiempoCount > 0 && (
+                            <Badge className="bg-green-100 text-green-700 text-xs gap-1">
+                              <CheckCircle2 className="w-3 h-3" />
+                              {enTiempoCount}
+                            </Badge>
+                          )}
+                          {fueraTiempoCount > 0 && (
+                            <Badge className="bg-red-100 text-red-700 text-xs gap-1">
+                              <XCircle className="w-3 h-3" />
+                              {fueraTiempoCount}
+                            </Badge>
+                          )}
+                        </div>
+                        <span className="text-lg font-bold text-slate-700">
+                          {registros.length}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Two Column: Personas y Unidades */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Asistencias de Personas */}
@@ -226,7 +495,7 @@ export default function Dashboard() {
           <CardContent>
             <div className="space-y-2">
               {recientesPersonas && recientesPersonas.length > 0 ? (
-                recientesPersonas.slice(0, 6).map((a) => (
+                recientesPersonas.slice(0, 6).map((a: any) => (
                   <div
                     key={a.id}
                     className="flex items-center justify-between p-3 bg-slate-50 rounded-lg"
@@ -259,6 +528,19 @@ export default function Dashboard() {
                       >
                         {a.tipo === "entrada" ? "Entrada" : "Salida"}
                       </Badge>
+                      <div className="mt-0.5">
+                        {estaEnTiempo(a.fechaHora) ? (
+                          <span className="text-[10px] text-green-600 flex items-center justify-end gap-0.5">
+                            <CheckCircle2 className="w-3 h-3" />
+                            En tiempo
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-red-500 flex items-center justify-end gap-0.5">
+                            <XCircle className="w-3 h-3" />
+                            Fuera de tiempo
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-slate-400 mt-0.5">
                         {new Date(a.fechaHora).toLocaleTimeString("es-MX", {
                           hour: "2-digit",
@@ -297,7 +579,7 @@ export default function Dashboard() {
             <div className="space-y-2">
               {statsUnidades?.recientes &&
               statsUnidades.recientes.length > 0 ? (
-                statsUnidades.recientes.map((a) => (
+                statsUnidades.recientes.map((a: any) => (
                   <div
                     key={a.id}
                     className="flex items-center justify-between p-3 bg-slate-50 rounded-lg"
@@ -314,7 +596,12 @@ export default function Dashboard() {
                         <p className="font-medium text-slate-900 text-sm truncate">
                           {a.transportistaNombre}
                         </p>
-                        <p className="text-xs text-slate-500">Unidad</p>
+                        {a.ruta && (
+                          <div className="flex items-center gap-1 text-xs text-slate-500">
+                            <MapPin className="w-3 h-3" />
+                            {a.ruta}
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="text-right shrink-0">
@@ -328,6 +615,19 @@ export default function Dashboard() {
                       >
                         {a.tipo === "entrada" ? "Entrada" : "Salida"}
                       </Badge>
+                      <div className="mt-0.5">
+                        {estaEnTiempo(a.fechaHora) ? (
+                          <span className="text-[10px] text-green-600 flex items-center justify-end gap-0.5">
+                            <CheckCircle2 className="w-3 h-3" />
+                            En tiempo
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-red-500 flex items-center justify-end gap-0.5">
+                            <XCircle className="w-3 h-3" />
+                            Fuera de tiempo
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-slate-400 mt-0.5">
                         {new Date(a.fechaHora).toLocaleTimeString("es-MX", {
                           hour: "2-digit",

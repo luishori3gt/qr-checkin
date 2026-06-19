@@ -30,6 +30,10 @@ import {
   FileSpreadsheet,
   Bus,
   MapPin,
+  User,
+  Clock,
+  CheckCircle2,
+  AlertTriangle,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 
@@ -76,6 +80,16 @@ export default function Historial() {
 
   const hasFilters =
     fechaDesde || fechaHasta || transportistaFilter !== "all" || tipoFilter !== "all";
+
+  // Funcion: antes de las 6:00 AM = EN TIEMPO, despues = FUERA DE TIEMPO
+  const estaEnTiempo = (fechaHora: Date | string): boolean => {
+    const fecha = new Date(fechaHora);
+    const horas = fecha.getHours();
+    const minutos = fecha.getMinutes();
+    const totalMinutos = horas * 60 + minutos;
+    const limiteMinutos = 6 * 60; // 6:00 AM
+    return totalMinutos <= limiteMinutos;
+  };
 
   const clearFilters = () => {
     setFechaDesde("");
@@ -366,6 +380,7 @@ export default function Historial() {
                       <TableHead>Persona</TableHead>
                       <TableHead>Transportista</TableHead>
                       <TableHead>Tipo</TableHead>
+                      <TableHead>Tiempo</TableHead>
                       <TableHead>Fecha</TableHead>
                       <TableHead>Hora</TableHead>
                     </TableRow>
@@ -406,6 +421,19 @@ export default function Historial() {
                             )}
                             {a.tipo === "entrada" ? "Entrada" : "Salida"}
                           </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {estaEnTiempo(a.fechaHora) ? (
+                            <div className="flex items-center gap-1 text-green-600">
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span className="text-xs font-medium">En tiempo</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1 text-red-500">
+                              <AlertTriangle className="w-3.5 h-3.5" />
+                              <span className="text-xs font-medium">Fuera de tiempo</span>
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell>
                           {new Date(a.fechaHora).toLocaleDateString("es-MX", {
@@ -474,6 +502,7 @@ export default function Historial() {
                       <TableHead>Transportista</TableHead>
                       <TableHead>Ruta / Tienda</TableHead>
                       <TableHead>Tipo</TableHead>
+                      <TableHead>Tiempo</TableHead>
                       <TableHead>Fecha</TableHead>
                       <TableHead>Hora</TableHead>
                     </TableRow>
@@ -521,6 +550,19 @@ export default function Historial() {
                             )}
                             {a.tipo === "entrada" ? "Entrada" : "Salida"}
                           </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {estaEnTiempo(a.fechaHora) ? (
+                            <div className="flex items-center gap-1 text-green-600">
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span className="text-xs font-medium">En tiempo</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1 text-red-500">
+                              <AlertTriangle className="w-3.5 h-3.5" />
+                              <span className="text-xs font-medium">Fuera de tiempo</span>
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell>
                           {new Date(a.fechaHora).toLocaleDateString("es-MX", {
